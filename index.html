@@ -74,8 +74,8 @@
         }
         #test-btn { background-color: #f0ad4e; }
         #test-btn:hover { background-color: #df983a; }
-        #reload-lib-btn, #refresh-cameras-btn { background-color: #5bc0de; } /* Combined style */
-        #reload-lib-btn:hover, #refresh-cameras-btn:hover { background-color: #46b8da; } /* Combined style */
+        #reload-lib-btn, #refresh-cameras-btn { background-color: #5bc0de; } 
+        #reload-lib-btn:hover, #refresh-cameras-btn:hover { background-color: #46b8da; }
 
 
         .status {
@@ -242,16 +242,15 @@
             text-align: center;
             margin-top: 10px;
         }
-        /* Styles for API Key Image Preview */
         .api-key-image-container {
-            text-align: center; /* Center the image */
-            margin-bottom: 15px; /* Space below the image */
+            text-align: center; 
+            margin-bottom: 15px; 
         }
         .api-key-image-container img {
-            max-width: 100%; /* Make image responsive */
-            height: auto; /* Maintain aspect ratio */
-            border: 1px solid #ddd; /* Optional border */
-            border-radius: 4px; /* Optional rounded corners */
+            max-width: 100%; 
+            height: auto; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
@@ -283,10 +282,11 @@
 
             <div class="api-key-image-container">
                 <p style="font-size:0.9em; color:#555; margin-bottom:5px;">Example of where to find your XToys API Key on webhook.xtoys.app:</p>
-                <img src="https://placehold.co/600x150/E8E8E8/777777?text=Placeholder:+XToys+API+Key+Location+Screenshot" 
-                     alt="Example showing where to find the XToys API Key"
-                     onerror="this.onerror=null; this.src='https://placehold.co/600x150/f8d7da/721c24?text=Image+Load+Error'; this.alt='Error loading image example';">
+                <img src="xtoys_api_key_example.png" 
+                     alt="Example showing where to find the XToys API Key on webhook.xtoys.app"
+                     onerror="this.onerror=null; this.src='https://placehold.co/600x150/f8d7da/721c24?text=Local+image+xtoys_api_key_example.png+not+found.'; this.alt='Error: Local image for API key example not found.';">
             </div>
+            
             <div>
                 <label for="api-key">XToys API Key:</label>
                 <input type="text" id="api-key" placeholder="Enter your XToys API Key from webhook.xtoys.app">
@@ -403,7 +403,7 @@
 
         const emotionToEmojiMap = {
             neutral: '😐', happy: '😊', sad: '😢', angry: '😠',
-            fearful: '😨', disgusted: '🤢', surprised: '😮'
+            fearful: '😨', disgusted: '�', surprised: '😮'
         };
 
         // DOM elements
@@ -576,7 +576,6 @@
                     addLog("No video input devices found.", "warn");
                     return;
                 }
-                 // Add a "Default" option first
                 const defaultOption = document.createElement('option');
                 defaultOption.value = "";
                 defaultOption.text = "Default Camera";
@@ -972,3 +971,4 @@
     </script>
 </body>
 </html>
+�
