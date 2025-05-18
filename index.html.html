@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facial Expression Game for XToys (Cloud GET)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        .video-container {
+            position: relative;
+            margin: 25px 0;
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        #video {
+            width: 100%;
+            display: block;
+            border-radius: 8px;
+        }
+        #face-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .controls, .game-controls {
+            margin: 25px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        button {
+            padding: 12px 18px;
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button:hover {
+            background-color: #4a9d4a;
+            transform: translateY(-1px);
+        }
+        button:active {
+            transform: translateY(0px);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        button:disabled {
+            background-color: #d1d1d1;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+        #test-btn { background-color: #f0ad4e; }
+        #test-btn:hover { background-color: #df983a; }
+        #reload-lib-btn { background-color: #5bc0de; }
+        #reload-lib-btn:hover { background-color: #46b8da; }
+
+        .status {
+            padding: 12px 15px;
+            margin: 15px 0;
+            border-radius: 6px;
+            font-weight: 500;
+            border: 1px solid transparent;
+        }
+        .status.success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border-color: #a5d6a7;
+        }
+        .status.error {
+            background-color: #ffebee;
+            color: #c62828;
+            border-color: #ef9a9a;
+        }
+        .live-status-display, .game-metrics, .score-display {
+            margin-top: 25px;
+            padding: 18px;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            border-left: 5px solid #5cb85c;
+        }
+        .live-status-display h3, .game-metrics h3, .score-display h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .settings {
+            margin: 25px 0;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #ffffff;
+        }
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 18px 0;
+            display: inline-block;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+        input[type="checkbox"] {
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        .log-container {
+            max-height: 250px;
+            overflow-y: auto;
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #2b2b2b;
+            color: #f0f0f0;
+            border: 1px solid #444;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+        }
+        .log-container div {
+            padding: 3px 0;
+            border-bottom: 1px dotted #555;
+        }
+        .log-container div:last-child { border-bottom: none; }
+        #log-header {
+             font-weight:bold; padding-bottom:5px; margin-bottom: 5px; border-bottom: 1px solid #777;
+        }
+        .cdn-selector { margin-bottom: 20px; }
+        .data-view {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-radius: 6px;
+            overflow-x: auto;
+            border: 1px solid #e0e0e0;
+        }
+        .hidden { display: none; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f5f5f5;
+            font-weight: 600;
+        }
+        .api-key-note {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: -12px;
+            margin-bottom: 15px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .container > p {
+            text-align: center;
+            color: #555;
+            margin-bottom: 25px;
+            font-size: 0.95em;
+        }
+        /* Bar graph styles */
+        .bar-graph-container {
+            margin-top: 15px;
+        }
+        .bar-item {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .bar-label {
+            width: 120px; 
+            font-size: 0.9em;
+            color: #444;
+            margin-right: 10px;
+        }
+        .bar-wrapper {
+            flex-grow: 1;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            height: 20px;
+            overflow: hidden;
+        }
+        .bar {
+            height: 100%;
+            background-color: #28a745; /* Green */
+            border-radius: 4px;
+            transition: width 0.1s ease-out; 
+            text-align: right;
+            padding-right: 5px;
+            box-sizing: border-box;
+            color: white;
+            font-size: 0.8em;
+            line-height: 20px; 
+        }
+        .bar.surprised { background-color: #ffc107; } 
+        .bar.mouth-open { background-color: #17a2b8; } 
+        .bar.mouth-closed { background-color: #007bff; } 
+        .bar.eyes-open { background-color: #fd7e14; } 
+        .bar.eyes-closed { background-color: #6f42c1; } 
+
+        .score-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #28a745;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Facial Expression Game for XToys</h1>
+        <p>This version sends data to the XToys cloud webhook (<code>webhook.xtoys.app</code>) using a GET request.</p>
+        
+        <div class="settings">
+            <h3>Settings</h3>
+            <div class="cdn-selector">
+                <label for="cdn-select">Face-API CDN Provider:</label>
+                <select id="cdn-select">
+                    <option value="jsdelivr" selected>jsDelivr (Recommended)</option>
+                    <option value="unpkg">Unpkg</option>
+                    <option value="githack">GitHack (Less Reliable)</option>
+                </select>
+                <button id="reload-lib-btn">Reload Library</button>
+            </div>
+            <div>
+                <label for="api-key">XToys API Key:</label>
+                <input type="text" id="api-key" placeholder="Enter your XToys API Key from webhook.xtoys.app">
+                <p class="api-key-note">This is the API key for the <code>webhook.xtoys.app</code> service.</p>
+            </div>
+            <div>
+                <label for="analysis-interval">Update Interval (ms):</label>
+                <input type="number" id="analysis-interval" value="500" min="100" max="5000" title="Minimum time between sending updates to XToys if data changes, or periodic update interval.">
+            </div>
+            <div>
+                <label for="smoothing-buffer-size">Smoothing Buffer Size (frames):</label>
+                <input type="number" id="smoothing-buffer-size" value="5" min="1" max="20">
+            </div>
+            <div>
+                <label for="min-stable-frames">Min Stable Frames for Smoothing:</label>
+                <input type="number" id="min-stable-frames" value="3" min="1" max="20">
+            </div>
+             <div>
+                <label for="mouth-open-threshold">Mouth Open Threshold (Height/Width Ratio):</label>
+                <input type="number" id="mouth-open-threshold" value="0.4" min="0.1" max="1.0" step="0.05">
+            </div>
+            <div>
+                <label for="eye-open-threshold">Eye Open Threshold (Avg EAR):</label>
+                <input type="number" id="eye-open-threshold" value="0.2" min="0.1" max="0.5" step="0.01">
+            </div>
+            <div>
+                <label>
+                    <input type="checkbox" id="show-raw-data"> Show Raw Detection Data
+                </label>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="start-btn" disabled>Start Camera</button>
+            <button id="stop-btn" disabled>Stop Camera</button>
+            <button id="test-btn">Test XToys Cloud Webhook</button>
+        </div>
+
+        <div id="status-message" class="status">Initializing...</div>
+        
+        <div class="video-container">
+            <video id="video" autoplay muted playsinline></video>
+            <canvas id="face-canvas"></canvas>
+        </div>
+        
+        <div class="live-status-display">
+            <h3>Live Status</h3>
+            <p>Detected Stable Emotion: <strong id="emotion-text">Waiting...</strong> (ID: <strong id="emotion-id-text">-</strong>)</p>
+            <p>Mouth Open: <strong id="mouth-open-status">N/A</strong></p>
+            <p>Eyes Open (Avg): <strong id="eyes-open-status">N/A</strong></p>
+            <p>Sent to XToys (Intensity): <strong id="xtoys-intensity-status">0</strong>%</p>
+            <div id="emotion-details-title" style="margin-top:15px; font-weight:bold;" class="hidden">Expression Probabilities:</div>
+            <div id="emotion-details"></div>
+        </div>
+
+        <div class="game-controls">
+            <button id="start-game-btn">Start Expression Game</button>
+            <button id="stop-game-btn" disabled>Stop Game</button>
+            <button id="reset-game-btn" disabled>Reset Game Stats</button>
+        </div>
+
+        <div class="score-display">
+            <h3>Game Score</h3>
+            <p>Score = (Time Mouth Closed) + (Time Happy)</p>
+            <div id="overall-score" class="score-value">0</div>
+        </div>
+
+        <div class="game-metrics">
+            <h3>Expression Game Stats</h3>
+            <div id="expression-duration-display">
+                <p>Game not active.</p>
+            </div>
+             <div id="bar-graph-display" class="bar-graph-container">
+                </div>
+        </div>
+        
+        <div id="raw-data-view" class="data-view hidden">
+            <h3>Raw Detection Data (from face-api.js):</h3>
+            <pre id="raw-data-content"></pre>
+        </div>
+        
+        <div class="log-container">
+            <div id="log-header">Activity Log:</div>
+            <div id="log-entries"></div>
+        </div>
+    </div>
+
+    <script>
+        // App configuration
+        const config = {
+            cdnProviders: {
+                jsdelivr: {
+                    mainLibrary: 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.2/dist/face-api.js',
+                    modelBaseUrl: 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.2/model/'
+                },
+                unpkg: {
+                    mainLibrary: 'https://unpkg.com/@vladmandic/face-api@1.7.2/dist/face-api.js',
+                    modelBaseUrl: 'https://unpkg.com/@vladmandic/face-api@1.7.2/model/'
+                },
+                githack: {
+                    mainLibrary: 'https://rawcdn.githack.com/justadudewhohacks/face-api.js/master/dist/face-api.min.js',
+                    modelBaseUrl: 'https://rawcdn.githack.com/justadudewhohacks/face-api.js/master/weights/'
+                }
+            },
+            xtoysCloudWebhookBaseUrl: 'https://webhook.xtoys.app/',
+            detectionInterval: 100, 
+            defaultAnalysisInterval: 500,
+            maxBarTime: 60 
+        };
+
+        const expressionIdMap = {
+            neutral: 0, happy: 1, sad: 2, angry: 3, fearful: 4, disgusted: 5, surprised: 6
+        };
+
+        // New map for emotion emojis
+        const emotionToEmojiMap = {
+            neutral: '😐',
+            happy: '😊',
+            sad: '😢',
+            angry: '😠',
+            fearful: '😨',
+            disgusted: '🤢',
+            surprised: '😮'
+        };
+
+        // DOM elements
+        const elements = {
+            video: document.getElementById('video'),
+            canvas: document.getElementById('face-canvas'),
+            emotionText: document.getElementById('emotion-text'),
+            emotionIdText: document.getElementById('emotion-id-text'),
+            emotionDetails: document.getElementById('emotion-details'),
+            emotionDetailsTitle: document.getElementById('emotion-details-title'),
+            statusMessage: document.getElementById('status-message'),
+            startButton: document.getElementById('start-btn'),
+            stopButton: document.getElementById('stop-btn'),
+            testButton: document.getElementById('test-btn'),
+            apiKeyInput: document.getElementById('api-key'),
+            analysisIntervalInput: document.getElementById('analysis-interval'),
+            smoothingBufferSizeInput: document.getElementById('smoothing-buffer-size'),
+            minStableFramesInput: document.getElementById('min-stable-frames'),
+            mouthOpenThresholdInput: document.getElementById('mouth-open-threshold'),
+            eyeOpenThresholdInput: document.getElementById('eye-open-threshold'),
+            logEntriesContainer: document.getElementById('log-entries'),
+            cdnSelect: document.getElementById('cdn-select'),
+            reloadLibBtn: document.getElementById('reload-lib-btn'),
+            showRawData: document.getElementById('show-raw-data'),
+            rawDataView: document.getElementById('raw-data-view'),
+            rawDataContent: document.getElementById('raw-data-content'),
+            mouthOpenStatus: document.getElementById('mouth-open-status'),
+            eyesOpenStatus: document.getElementById('eyes-open-status'),
+            xtoysIntensityStatus: document.getElementById('xtoys-intensity-status'),
+            startGameButton: document.getElementById('start-game-btn'),
+            stopGameButton: document.getElementById('stop-game-btn'),
+            resetGameButton: document.getElementById('reset-game-btn'),
+            expressionDurationDisplay: document.getElementById('expression-duration-display'),
+            barGraphDisplay: document.getElementById('bar-graph-display'), 
+            overallScoreDisplay: document.getElementById('overall-score')
+        };
+
+        // Application state
+        const state = {
+            isRunning: false,
+            detectionIntervalId: null,
+            selectedCdn: elements.cdnSelect.value,
+            currentStream: null,
+            isLibraryLoaded: false,
+            expressionHistory: [],
+            stableExpression: 'neutral',
+            gameActive: false,
+            currentExpressionStartTime: 0, 
+            expressionTimers: {}, 
+            gameTimeMouthOpenTotal: 0,  
+            gameTimeMouthClosedTotal: 0, 
+            gameTimeEyesOpenTotal: 0,   
+            gameTimeEyesClosedTotal: 0,  
+            lastGameTickTime: 0, 
+            lastMouthStateForGameTiming: null, 
+            lastEyeStateForGameTiming: null,   
+            lastMouthStateChangeTime: 0, 
+            lastEyeStateChangeTime: 0,   
+            score: 0,
+            isMouthOpenState: false, 
+            areEyesOpenState: false, 
+            lastSentXtoysParams: {}, 
+            lastSentXtoysTime: 0,
+        };
+
+        function getNumericInput(el, def) { const v = parseInt(el.value); return isNaN(v) ? def : v; }
+        function getFloatInput(el, def) { const v = parseFloat(el.value); return isNaN(v) ? def : v; }
+
+        function getSmoothingBufferSize() { return getNumericInput(elements.smoothingBufferSizeInput, 5); }
+        function getMinStableFrames() { return getNumericInput(elements.minStableFramesInput, 3); }
+        function getMouthOpenThreshold() { return getFloatInput(elements.mouthOpenThresholdInput, 0.4); }
+        function getEyeOpenThreshold() { return getFloatInput(elements.eyeOpenThresholdInput, 0.2); }
+        function getAnalysisInterval() { return getNumericInput(elements.analysisIntervalInput, config.defaultAnalysisInterval); }
+
+        function addLog(message, type = 'info') {
+            try {
+                const logEntry = document.createElement('div');
+                const time = new Date().toLocaleTimeString();
+                logEntry.textContent = `[${time}] ${message}`;
+                if (type === 'error') logEntry.style.color = '#ffcdd2';
+                else if (type === 'success') logEntry.style.color = '#c8e6c9';
+                else logEntry.style.color = '#e0e0e0'; 
+
+                if (elements.logEntriesContainer) {
+                    elements.logEntriesContainer.prepend(logEntry);
+                } else { console.warn("Log container not found:", message); }
+            } catch (e) { console.error("Error in addLog:", e, "Msg:", message); }
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+        
+        function showStatus(message, isError = false) {
+            if (elements.statusMessage) {
+                elements.statusMessage.textContent = message;
+                elements.statusMessage.className = isError ? 'status error' : 'status success';
+            } else { console.warn("Status element not found. Status:", message); }
+        }
+
+        function loadScript(url) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.type = 'text/javascript'; script.src = url;
+                script.setAttribute('data-face-api', 'true');
+                script.onload = resolve;
+                script.onerror = () => {
+                    addLog(`Failed to load script: ${url}`, 'error');
+                    reject(new Error(`Failed to load script: ${url}`));
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        async function loadFaceApiLibrary() {
+            state.selectedCdn = elements.cdnSelect.value;
+            const cdnConfig = config.cdnProviders[state.selectedCdn];
+            showStatus('Loading Face-API library...');
+            addLog(`Loading Face-API from ${state.selectedCdn}...`);
+            elements.startButton.disabled = true; state.isLibraryLoaded = false;
+            try {
+                document.querySelectorAll('script[data-face-api]').forEach(s => s.remove());
+                if (window.faceapi) window.faceapi = undefined; 
+                await loadScript(cdnConfig.mainLibrary);
+                if (typeof faceapi === 'undefined') throw new Error('Face-API (faceapi object) not found. Check CDN.');
+                addLog('Face-API library loaded.', 'success');
+                
+                faceapi.env.monkeyPatch({
+                    Canvas: HTMLCanvasElement, Image: HTMLImageElement,
+                    ImageData: ImageData, Video: HTMLVideoElement,
+                    createCanvasElement: () => document.createElement('canvas'),
+                    createImageElement: () => document.createElement('img')
+                });
+
+                await loadModels(cdnConfig.modelBaseUrl);
+                state.isLibraryLoaded = true; elements.startButton.disabled = false;
+                showStatus('Ready for facial expression detection.', false);
+            } catch (error) {
+                showStatus(`Failed to load library/models: ${error.message}`, true);
+                addLog(`Critical Load Error: ${error.message}`, 'error');
+                console.error("Lib/Model Load Error:", error);
+            }
+        }
+
+        async function loadModels(modelBaseUrl) {
+            showStatus('Loading models...'); addLog(`Loading models from ${modelBaseUrl}...`);
+            try {
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(modelBaseUrl),
+                    faceapi.nets.faceExpressionNet.loadFromUri(modelBaseUrl),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(modelBaseUrl)
+                ]);
+                addLog('Models loaded.', 'success'); return true;
+            } catch (error) { console.error("Model Load Error:", error); throw error; }
+        }
+        
+        async function sendToXtoysCloud(params) {
+            const apiKey = elements.apiKeyInput.value.trim();
+            if (!apiKey) { addLog('XToys API Key missing.', 'error'); return false; }
+            let endpoint = `${config.xtoysCloudWebhookBaseUrl}${apiKey}?action=GetData`;
+            const queryString = Object.keys(params).map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join('&');
+            if (queryString) endpoint += `&${queryString}`;
+            try {
+                const response = await fetch(endpoint, { method: 'GET' });
+                if (response.ok) { return true; } 
+                else { const eTxt = await response.text(); addLog(`XToys send FAIL. Status: ${response.status}. Resp: ${eTxt}`, 'error'); return false; }
+            } catch (error) { addLog(`XToys network error: ${error.message}`, 'error'); console.error("XToys Send Error:", error); return false; }
+        }
+        
+        async function testXtoysCloudWebhook() {
+            if (!elements.apiKeyInput.value.trim()) { showStatus('Enter XToys API Key.', true); return; }
+            showStatus('Testing XToys Cloud Webhook...');
+            const testParams = { intensity: 25, emotion: "test_smile", mouthOpen: 1, eyesOpen: 1, msg: "Facial App Test " + new Date().toLocaleTimeString() };
+            const success = await sendToXtoysCloud(testParams);
+            showStatus(success ? 'XToys test sent!' : 'XToys test failed. Check console/API Key.', !success);
+        }
+        
+        async function startFaceDetection() {
+            if (state.isRunning || !state.isLibraryLoaded) { addLog("Cannot start: Running or lib not loaded.", "error"); return; }
+            try {
+                state.currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } });
+                elements.video.srcObject = state.currentStream;
+                await new Promise(resolve => { elements.video.onloadedmetadata = resolve; });
+                elements.canvas.width = elements.video.videoWidth; elements.canvas.height = elements.video.videoHeight;
+                state.isRunning = true; elements.startButton.disabled = true; elements.stopButton.disabled = false; elements.startGameButton.disabled = false;
+                state.lastGameTickTime = Date.now(); 
+                state.detectionIntervalId = setInterval(detectFace, config.detectionInterval);
+                showStatus('Camera started. Detection running.', false); addLog('Face detection started.', 'success');
+            } catch (error) { showStatus(`Cam start error: ${error.message}`, true); addLog(`Cam start error: ${error.message}`, 'error'); console.error("Cam Error:", error); }
+        }
+        
+        function stopFaceDetection() {
+            if (!state.isRunning) return;
+            if (state.currentStream) { state.currentStream.getTracks().forEach(t => t.stop()); elements.video.srcObject = null; state.currentStream = null; }
+            clearInterval(state.detectionIntervalId); state.detectionIntervalId = null;
+            elements.canvas.getContext('2d').clearRect(0, 0, elements.canvas.width, elements.canvas.height);
+            state.isRunning = false; elements.startButton.disabled = !state.isLibraryLoaded; elements.stopButton.disabled = true;
+            elements.emotionText.textContent = 'Stopped'; elements.emotionIdText.textContent = '-';
+            elements.emotionDetails.innerHTML = ''; elements.emotionDetailsTitle.classList.add('hidden');
+            elements.mouthOpenStatus.textContent = 'N/A'; elements.eyesOpenStatus.textContent = 'N/A';
+            elements.xtoysIntensityStatus.textContent = '0';
+            if(state.gameActive) stopGame();
+            elements.startGameButton.disabled = true; elements.stopGameButton.disabled = true;
+            showStatus('Face detection stopped.', false); addLog('Face detection stopped.');
+            resetSmoothingState();
+            if (Object.keys(state.lastSentXtoysParams).length > 0 && state.lastSentXtoysParams.intensity !== 0) {
+                 sendToXtoysCloud({ intensity: 0, status: "stopped" });
+                 state.lastSentXtoysParams = { intensity: 0, status: "stopped" };
+            }
+        }
+
+        function resetSmoothingState() { state.expressionHistory = []; state.stableExpression = 'neutral'; }
+
+        function getEAR(eye) { const A=Math.hypot(eye[1].x-eye[5].x,eye[1].y-eye[5].y); const B=Math.hypot(eye[2].x-eye[4].x,eye[2].y-eye[4].y); const C=Math.hypot(eye[0].x-eye[3].x,eye[0].y-eye[3].y); return C===0?0:(A+B)/(2*C); }
+        function getMouthOpenness(mouth) { const uL=mouth[14];const lL=mouth[18];const lC=mouth[0];const rC=mouth[6]; if(!uL||!lL||!lC||!rC)return 0; const mH=Math.hypot(uL.x-lL.x,uL.y-lL.y); const mW=Math.hypot(lC.x-rC.x,lC.y-rC.y); return mW===0?0:mH/mW; }
+        function areParamsEqual(p1, p2) { const k1=Object.keys(p1); const k2=Object.keys(p2); if(k1.length!==k2.length)return false; for(let k of k1){if(p1[k]!==p2[k])return false;} return true; }
+
+        async function detectFace() {
+            if (!state.isRunning || !elements.video.srcObject || typeof faceapi === 'undefined' || elements.video.readyState < 3) return;
+            
+            const currentTime = Date.now(); 
+            const analysisInterval = getAnalysisInterval();
+            const gameDeltaTime = (currentTime - state.lastGameTickTime) / 1000; 
+            state.lastGameTickTime = currentTime; 
+
+            try {
+                if (elements.canvas.width !== elements.video.clientWidth || elements.canvas.height !== elements.video.clientHeight) {
+                    elements.canvas.width = elements.video.clientWidth; elements.canvas.height = elements.video.clientHeight;
+                }
+                const detections = await faceapi.detectAllFaces(elements.video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 })).withFaceLandmarks().withFaceExpressions();
+                
+                if (elements.showRawData.checked) { elements.rawDataView.classList.remove('hidden'); elements.rawDataContent.textContent = JSON.stringify(detections, null, 2); } 
+                else { elements.rawDataView.classList.add('hidden'); }
+                
+                const displaySize = { width: elements.canvas.width, height: elements.canvas.height };
+                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                const ctx = elements.canvas.getContext('2d'); ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
+                
+                if (resizedDetections.length > 0) {
+                    const face = resizedDetections[0]; 
+                    faceapi.draw.drawDetections(elements.canvas, [face]); // Draw only the first detected face box
+                    const expressions = face.expressions; 
+                    const landmarks = face.landmarks;
+
+                    const mouthOpenness = getMouthOpenness(landmarks.getMouth());
+                    const newMouthState = mouthOpenness > getMouthOpenThreshold();
+                    const leftEyeEAR = getEAR(landmarks.getLeftEye()); const rightEyeEAR = getEAR(landmarks.getRightEye());
+                    const avgEAR = (leftEyeEAR + rightEyeEAR) / 2;
+                    const newEyeState = avgEAR > getEyeOpenThreshold();
+
+                    if (state.gameActive) {
+                        if (state.stableExpression && state.expressionTimers.hasOwnProperty(state.stableExpression)) {
+                            state.expressionTimers[state.stableExpression] += gameDeltaTime;
+                        } else if (state.stableExpression) { 
+                            state.expressionTimers[state.stableExpression] = gameDeltaTime;
+                        }
+                        if (newMouthState !== state.lastMouthStateForGameTiming && state.lastMouthStateForGameTiming !== null) {
+                            const durationMouth = (currentTime - state.lastMouthStateChangeTime) / 1000;
+                            if (state.lastMouthStateForGameTiming) state.gameTimeMouthOpenTotal += durationMouth; 
+                            else state.gameTimeMouthClosedTotal += durationMouth;
+                            state.lastMouthStateChangeTime = currentTime;
+                        }
+                        state.lastMouthStateForGameTiming = newMouthState;
+                        if (newEyeState !== state.lastEyeStateForGameTiming && state.lastEyeStateForGameTiming !== null) {
+                            const durationEyes = (currentTime - state.lastEyeStateChangeTime) / 1000;
+                            if (state.lastEyeStateForGameTiming) state.gameTimeEyesOpenTotal += durationEyes; 
+                            else state.gameTimeEyesClosedTotal += durationEyes;
+                            state.lastEyeStateChangeTime = currentTime;
+                        }
+                        state.lastEyeStateForGameTiming = newEyeState;
+                    }
+                    state.isMouthOpenState = newMouthState; state.areEyesOpenState = newEyeState;
+
+                    elements.mouthOpenStatus.textContent = `${state.isMouthOpenState} (Ratio: ${mouthOpenness.toFixed(2)})`;
+                    elements.eyesOpenStatus.textContent = `${state.areEyesOpenState} (Avg EAR: ${avgEAR.toFixed(2)})`;
+                    
+                    let currentDominantExpression = 'neutral'; let maxProbability = 0;
+                    for (const [ex, prob] of Object.entries(expressions)) { if (prob > maxProbability) { maxProbability = prob; currentDominantExpression = ex; } }
+                    state.expressionHistory.push(currentDominantExpression);
+                    if (state.expressionHistory.length > getSmoothingBufferSize()) state.expressionHistory.shift();
+
+                    let newStableExpression = state.stableExpression;
+                    if (state.expressionHistory.length >= getMinStableFrames()) {
+                        const counts = state.expressionHistory.reduce((acc, expr) => { acc[expr] = (acc[expr] || 0) + 1; return acc; }, {});
+                        for (const expr in counts) { if (counts[expr] >= getMinStableFrames()) { newStableExpression = expr; break; } }
+                    }
+                    if (newStableExpression !== state.stableExpression) {
+                        state.stableExpression = newStableExpression; 
+                        state.currentExpressionStartTime = currentTime; 
+                        addLog(`Stable expression: ${state.stableExpression}`);
+                    }
+                    elements.emotionText.textContent = state.stableExpression;
+                    elements.emotionIdText.textContent = expressionIdMap[state.stableExpression] !== undefined ? expressionIdMap[state.stableExpression] : '-';
+                    
+                    // Draw emotion emoji
+                    const emoji = emotionToEmojiMap[state.stableExpression] || '';
+                    if (emoji) {
+                        const faceBox = face.detection.box;
+                        const emojiSize = Math.min(faceBox.width, faceBox.height) * 0.7; // Relative to face size
+                        ctx.font = `${emojiSize}px Arial`;
+                        ctx.textAlign = 'center';
+                        // Position above and slightly to the right of the face box's center
+                        const emojiX = faceBox.x + faceBox.width * 0.75; 
+                        const emojiY = faceBox.y - emojiSize * 0.1; // Slightly above the top of the box
+                        ctx.fillText(emoji, emojiX, emojiY);
+                    }
+
+                    elements.emotionDetailsTitle.classList.remove('hidden');
+                    let detailsHTML = '<table>';
+                    Object.entries(expressions).sort(([,a],[,b]) => b-a).forEach(([ex,p]) => detailsHTML += `<tr><td>${ex}</td><td>${(p*100).toFixed(1)}%</td></tr>`);
+                    detailsHTML += '</table>'; elements.emotionDetails.innerHTML = detailsHTML;
+                    
+                    let xtoysIntensity = 0; 
+                    switch (state.stableExpression) {
+                        case 'happy': xtoysIntensity = 75; break; case 'surprised': xtoysIntensity = 90; break;
+                        case 'angry': xtoysIntensity = 60; break; default: xtoysIntensity = 0;
+                    }
+                    if (state.isMouthOpenState && (state.stableExpression === 'neutral' || state.stableExpression === 'surprised')) {
+                         xtoysIntensity = Math.max(xtoysIntensity, state.stableExpression === 'surprised' ? 95 : 50);
+                    }
+                    xtoysIntensity = Math.max(0, Math.min(100, Math.round(xtoysIntensity)));
+                    elements.xtoysIntensityStatus.textContent = xtoysIntensity;
+
+                    const xtoysParams = {
+                        intensity: xtoysIntensity, emotion: state.stableExpression, emotionId: expressionIdMap[state.stableExpression],
+                        mouthOpen: state.isMouthOpenState ? 1 : 0, eyesOpen: state.areEyesOpenState ? 1 : 0,
+                        mouthRatio: parseFloat(mouthOpenness.toFixed(3)), avgEAR: parseFloat(avgEAR.toFixed(3)),
+                    };
+                    if (!areParamsEqual(xtoysParams, state.lastSentXtoysParams) || (currentTime - state.lastSentXtoysTime) >= analysisInterval) {
+                        if (await sendToXtoysCloud(xtoysParams)) { state.lastSentXtoysParams = { ...xtoysParams }; state.lastSentXtoysTime = currentTime; }
+                    }
+                    if (state.gameActive) updateGameDisplay();
+                } else { 
+                    elements.emotionText.textContent = 'No face'; elements.emotionIdText.textContent = '-';
+                    elements.emotionDetails.innerHTML = ''; elements.emotionDetailsTitle.classList.add('hidden');
+                    elements.mouthOpenStatus.textContent = 'N/A'; elements.eyesOpenStatus.textContent = 'N/A';
+                    elements.xtoysIntensityStatus.textContent = '0';
+                    if (state.lastSentXtoysParams.intensity !== 0) {
+                        const noFaceP = { intensity: 0, emotion: "no_face" };
+                        if (await sendToXtoysCloud(noFaceP)) { state.lastSentXtoysParams = { ...noFaceP }; state.lastSentXtoysTime = currentTime; }
+                    }
+                     if (state.gameActive) updateGameDisplay(); 
+                }
+            } catch (error) { console.error('DetectFace Error:', error); addLog(`Detect error: ${error.message}`, 'error'); }
+        }
+
+        function startGame() {
+            if (!state.isRunning) { showStatus("Start camera first.", true); return; }
+            state.gameActive = true;
+            state.expressionTimers = {}; 
+            Object.keys(expressionIdMap).forEach(expr => state.expressionTimers[expr] = 0); 
+            state.gameTimeMouthOpenTotal = 0; state.gameTimeMouthClosedTotal = 0;
+            state.gameTimeEyesOpenTotal = 0; state.gameTimeEyesClosedTotal = 0;
+            state.score = 0;
+            const now = Date.now();
+            state.currentExpressionStartTime = now; 
+            state.lastMouthStateChangeTime = now; 
+            state.lastEyeStateChangeTime = now;
+            state.lastMouthStateForGameTiming = state.isMouthOpenState; 
+            state.lastEyeStateForGameTiming = state.areEyesOpenState;   
+            state.lastGameTickTime = now; 
+
+            elements.startGameButton.disabled = true; elements.stopGameButton.disabled = false; elements.resetGameButton.disabled = false;
+            addLog("Expression Game started.", "success");
+            updateGameDisplay(); 
+        }
+
+        function stopGame() {
+            state.gameActive = false;
+            const now = Date.now();
+            const finalGameDeltaTime = (now - state.lastGameTickTime) / 1000;
+
+            if (state.stableExpression && state.expressionTimers.hasOwnProperty(state.stableExpression)) {
+                state.expressionTimers[state.stableExpression] += finalGameDeltaTime;
+            } else if (state.stableExpression) {
+                 state.expressionTimers[state.stableExpression] = finalGameDeltaTime;
+            }
+            if (state.lastMouthStateForGameTiming !== null) {
+                const durationMouth = (now - state.lastMouthStateChangeTime) / 1000;
+                if (state.lastMouthStateForGameTiming) state.gameTimeMouthOpenTotal += durationMouth; 
+                else state.gameTimeMouthClosedTotal += durationMouth;
+            }
+            if (state.lastEyeStateForGameTiming !== null) {
+                const durationEyes = (now - state.lastEyeStateChangeTime) / 1000;
+                if (state.lastEyeStateForGameTiming) state.gameTimeEyesOpenTotal += durationEyes; 
+                else state.gameTimeEyesClosedTotal += durationEyes;
+            }
+            
+            elements.startGameButton.disabled = !state.isRunning; elements.stopGameButton.disabled = true;
+            addLog("Expression Game stopped. Final stats recorded.");
+            updateGameDisplay(); 
+        }
+
+        function resetGame() {
+            if (state.gameActive) stopGame(); 
+            state.expressionTimers = {}; Object.keys(expressionIdMap).forEach(expr => state.expressionTimers[expr] = 0);
+            state.gameTimeMouthOpenTotal = 0; state.gameTimeMouthClosedTotal = 0;
+            state.gameTimeEyesOpenTotal = 0; state.gameTimeEyesClosedTotal = 0;
+            state.score = 0; state.currentExpressionStartTime = 0;
+            state.lastMouthStateForGameTiming = null; state.lastEyeStateForGameTiming = null;
+            elements.resetGameButton.disabled = true; 
+            if(state.isRunning) elements.startGameButton.disabled = false;
+            addLog("Expression Game stats reset.");
+            updateGameDisplay();
+        }
+
+        function updateGameDisplay() {
+            let currentMouthClosedDuration = state.gameTimeMouthClosedTotal;
+            if (state.gameActive && !state.isMouthOpenState && state.lastMouthStateChangeTime > 0) { 
+                currentMouthClosedDuration += (Date.now() - state.lastMouthStateChangeTime) / 1000;
+            }
+            let currentHappyDuration = state.expressionTimers['happy'] || 0;
+            state.score = Math.round(currentMouthClosedDuration + currentHappyDuration);
+            elements.overallScoreDisplay.textContent = state.score;
+
+            const barData = [
+                { label: "Happy", time: state.expressionTimers['happy'] || 0, class: 'happy' },
+                { label: "Surprised", time: state.expressionTimers['surprised'] || 0, class: 'surprised' },
+                { 
+                    label: "Mouth Open", 
+                    time: state.gameTimeMouthOpenTotal + (state.gameActive && state.isMouthOpenState && state.lastMouthStateChangeTime > 0 ? (Date.now() - state.lastMouthStateChangeTime)/1000 : 0), 
+                    class: 'mouth-open' 
+                },
+                { 
+                    label: "Mouth Closed", 
+                    time: state.gameTimeMouthClosedTotal + (state.gameActive && !state.isMouthOpenState && state.lastMouthStateChangeTime > 0 ? (Date.now() - state.lastMouthStateChangeTime)/1000 : 0), 
+                    class: 'mouth-closed' 
+                },
+                { 
+                    label: "Eyes Open", 
+                    time: state.gameTimeEyesOpenTotal + (state.gameActive && state.areEyesOpenState && state.lastEyeStateChangeTime > 0 ? (Date.now() - state.lastEyeStateChangeTime)/1000 : 0), 
+                    class: 'eyes-open' 
+                },
+                { 
+                    label: "Eyes Closed", 
+                    time: state.gameTimeEyesClosedTotal + (state.gameActive && !state.areEyesOpenState && state.lastEyeStateChangeTime > 0 ? (Date.now() - state.lastEyeStateChangeTime)/1000 : 0), 
+                    class: 'eyes-closed' 
+                }
+            ];
+
+            let barGraphHTML = '';
+            barData.forEach(item => {
+                const percentage = Math.min(100, (item.time / config.maxBarTime) * 100);
+                barGraphHTML += `
+                    <div class="bar-item">
+                        <div class="bar-label">${item.label}</div>
+                        <div class="bar-wrapper">
+                            <div class="bar ${item.class}" style="width: ${percentage.toFixed(1)}%;">${item.time.toFixed(1)}s</div>
+                        </div>
+                    </div>`;
+            });
+            elements.barGraphDisplay.innerHTML = barGraphHTML;
+            
+            const noTimersRecorded = Object.values(state.expressionTimers).every(v=>v===0) && 
+                                   state.gameTimeMouthOpenTotal === 0 && state.gameTimeMouthClosedTotal === 0 && 
+                                   state.gameTimeEyesOpenTotal === 0 && state.gameTimeEyesClosedTotal === 0;
+
+            if (!state.gameActive && noTimersRecorded) {
+                elements.expressionDurationDisplay.innerHTML = "<p>Game not active or no expressions held. Start game to track stats.</p>";
+                elements.resetGameButton.disabled = true;
+                return;
+            }
+             if (!state.gameActive && !noTimersRecorded) {
+                 elements.expressionDurationDisplay.innerHTML = "<p style='margin-top:10px; text-align:center; font-style:italic;'>Game stopped. Press 'Start Game' for a new session or 'Reset' to clear.</p>";
+            } else if (state.gameActive) {
+                 elements.expressionDurationDisplay.innerHTML = "<p style='margin-top:10px; text-align:center; font-style:italic;'>Game in progress...</p>";
+            }
+            elements.resetGameButton.disabled = noTimersRecorded && !state.gameActive;
+        }
+
+        elements.startButton.addEventListener('click', startFaceDetection);
+        elements.stopButton.addEventListener('click', stopFaceDetection);
+        elements.testButton.addEventListener('click', testXtoysCloudWebhook);
+        elements.reloadLibBtn.addEventListener('click', loadFaceApiLibrary);
+        elements.showRawData.addEventListener('change', function() {
+            elements.rawDataView.classList.toggle('hidden', !this.checked);
+            if (!this.checked && state.isRunning) elements.rawDataContent.textContent = '';
+        });
+        elements.video.addEventListener('loadedmetadata', () => {
+            if(elements.video.videoWidth > 0) {
+                elements.canvas.width = elements.video.videoWidth; elements.canvas.height = elements.video.videoHeight;
+                elements.canvas.style.width = elements.video.clientWidth + 'px'; elements.canvas.style.height = elements.video.clientHeight + 'px';
+            }
+        });
+        window.addEventListener('resize', () => {
+            if (state.isRunning && elements.video.videoWidth > 0) {
+                elements.canvas.width = elements.video.videoWidth; elements.canvas.height = elements.video.videoHeight;
+                elements.canvas.style.width = elements.video.clientWidth + 'px'; elements.canvas.style.height = elements.video.clientHeight + 'px';
+            }
+        });
+        elements.startGameButton.addEventListener('click', startGame);
+        elements.stopGameButton.addEventListener('click', stopGame);
+        elements.resetGameButton.addEventListener('click', resetGame);
+        
+        function initializeApp() {
+            try {
+                if (!elements.logEntriesContainer) console.error("Log container 'log-entries' not found during init.");
+                addLog('Application initializing...');
+                showStatus('Initializing. Please wait for library to load.', false);
+                elements.startGameButton.disabled = true; elements.stopButton.disabled = true; elements.resetGameButton.disabled = true;
+                updateGameDisplay(); 
+                loadFaceApiLibrary();
+            } catch (e) {
+                console.error("CRITICAL ERROR during initializeApp:", e);
+                showStatus("Critical error on startup. Check console.", true);
+                if (elements.logEntriesContainer) addLog(`CRITICAL STARTUP ERROR: ${e.message}`, 'error');
+            }
+        }
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    </script>
+</body>
+</html>
