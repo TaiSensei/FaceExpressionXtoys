@@ -74,8 +74,9 @@
         }
         #test-btn { background-color: #f0ad4e; }
         #test-btn:hover { background-color: #df983a; }
-        #reload-lib-btn, #refresh-cameras-btn { background-color: #5bc0de; }
-        #reload-lib-btn:hover, #refresh-cameras-btn:hover { background-color: #46b8da; }
+        #reload-lib-btn, #refresh-cameras-btn { background-color: #5bc0de; } /* Combined style */
+        #reload-lib-btn:hover, #refresh-cameras-btn:hover { background-color: #46b8da; } /* Combined style */
+
 
         .status {
             padding: 12px 15px;
@@ -241,6 +242,18 @@
             text-align: center;
             margin-top: 10px;
         }
+        /* Styles for API Key Image Preview */
+        .api-key-image-container {
+            text-align: center; /* Center the image */
+            margin-bottom: 15px; /* Space below the image */
+        }
+        .api-key-image-container img {
+            max-width: 100%; /* Make image responsive */
+            height: auto; /* Maintain aspect ratio */
+            border: 1px solid #ddd; /* Optional border */
+            border-radius: 4px; /* Optional rounded corners */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
 
     </style>
 </head>
@@ -266,6 +279,13 @@
                     <option value="">Default Camera</option>
                 </select>
                 <button id="refresh-cameras-btn">Refresh Camera List</button>
+            </div>
+
+            <div class="api-key-image-container">
+                <p style="font-size:0.9em; color:#555; margin-bottom:5px;">Example of where to find your XToys API Key on webhook.xtoys.app:</p>
+                <img src="https://placehold.co/600x150/E8E8E8/777777?text=Placeholder:+XToys+API+Key+Location+Screenshot" 
+                     alt="Example showing where to find the XToys API Key"
+                     onerror="this.onerror=null; this.src='https://placehold.co/600x150/f8d7da/721c24?text=Image+Load+Error'; this.alt='Error loading image example';">
             </div>
             <div>
                 <label for="api-key">XToys API Key:</label>
@@ -407,8 +427,8 @@
             logEntriesContainer: document.getElementById('log-entries'),
             cdnSelect: document.getElementById('cdn-select'),
             reloadLibBtn: document.getElementById('reload-lib-btn'),
-            cameraSelect: document.getElementById('camera-select'), // New camera select element
-            refreshCamerasBtn: document.getElementById('refresh-cameras-btn'), // New refresh button
+            cameraSelect: document.getElementById('camera-select'), 
+            refreshCamerasBtn: document.getElementById('refresh-cameras-btn'), 
             showRawData: document.getElementById('show-raw-data'),
             rawDataView: document.getElementById('raw-data-view'),
             rawDataContent: document.getElementById('raw-data-content'),
@@ -520,7 +540,7 @@
                 await loadModels(cdnConfig.modelBaseUrl);
                 state.isLibraryLoaded = true; elements.startButton.disabled = false;
                 showStatus('Ready for facial expression detection.', false);
-                await populateCameraList(); // Populate camera list after library is ready
+                await populateCameraList(); 
             } catch (error) {
                 showStatus(`Failed to load library/models: ${error.message}`, true);
                 addLog(`Critical Load Error: ${error.message}`, 'error');
@@ -540,7 +560,6 @@
             } catch (error) { console.error("Model Load Error:", error); throw error; }
         }
 
-        // New function to populate the camera selection dropdown
         async function populateCameraList() {
             if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
                 addLog("enumerateDevices() not supported.", 'error');
@@ -550,18 +569,23 @@
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                elements.cameraSelect.innerHTML = ''; // Clear existing options
+                elements.cameraSelect.innerHTML = ''; 
 
                 if (videoDevices.length === 0) {
                     elements.cameraSelect.innerHTML = '<option value="">No cameras found</option>';
                     addLog("No video input devices found.", "warn");
                     return;
                 }
+                 // Add a "Default" option first
+                const defaultOption = document.createElement('option');
+                defaultOption.value = "";
+                defaultOption.text = "Default Camera";
+                elements.cameraSelect.appendChild(defaultOption);
 
                 videoDevices.forEach((device, index) => {
                     const option = document.createElement('option');
                     option.value = device.deviceId;
-                    option.text = device.label || `Camera ${index + 1}`;
+                    option.text = device.label || `Camera ${index + 1} (${device.deviceId.substring(0,8)}...)`;
                     elements.cameraSelect.appendChild(option);
                 });
                 addLog(`Found ${videoDevices.length} camera(s). List populated.`, "success");
@@ -595,24 +619,19 @@
         
         async function startFaceDetection() {
             if (state.isRunning || !state.isLibraryLoaded) { addLog("Cannot start: Running or lib not loaded.", "error"); return; }
-            
-            // Stop any existing stream before starting a new one
             if (state.currentStream) {
                 state.currentStream.getTracks().forEach(track => track.stop());
                 state.currentStream = null;
             }
-
             const selectedDeviceId = elements.cameraSelect.value;
             const videoConstraints = {
-                width: { ideal: 640 },
-                height: { ideal: 480 }
+                width: { ideal: 640 }, height: { ideal: 480 }
             };
             if (selectedDeviceId) {
                 videoConstraints.deviceId = { exact: selectedDeviceId };
             } else {
-                videoConstraints.facingMode = "user"; // Fallback to user facing if no specific device ID
+                videoConstraints.facingMode = "user"; 
             }
-            
             try {
                 state.currentStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
                 elements.video.srcObject = state.currentStream;
@@ -628,7 +647,6 @@
                 showStatus(`Cam start error: ${error.message}`, true); 
                 addLog(`Cam start error: ${error.message}. Try selecting a different camera or refreshing the list.`, 'error'); 
                 console.error("Cam Error:", error); 
-                // Attempt to populate camera list again if there's a camera error, as permissions might have just been granted.
                 populateCameraList();
             }
         }
@@ -742,8 +760,8 @@
                         const emojiSize = Math.min(faceBox.width, faceBox.height) * 0.6; 
                         ctx.font = `${emojiSize}px Arial`;
                         ctx.textAlign = 'center';
-                        const emojiX = faceBox.x + faceBox.width + emojiSize * 0.6; // To the right
-                        const emojiY = faceBox.y + faceBox.height * 0.5 + emojiSize * 0.3; // Vertically centered with facebox
+                        const emojiX = faceBox.x + faceBox.width + emojiSize * 0.6; 
+                        const emojiY = faceBox.y + faceBox.height * 0.5 + emojiSize * 0.3; 
                         ctx.fillText(emoji, emojiX, emojiY);
                     }
 
@@ -915,7 +933,7 @@
         elements.stopButton.addEventListener('click', stopFaceDetection);
         elements.testButton.addEventListener('click', testXtoysCloudWebhook);
         elements.reloadLibBtn.addEventListener('click', loadFaceApiLibrary);
-        elements.refreshCamerasBtn.addEventListener('click', populateCameraList); // Listener for refresh button
+        elements.refreshCamerasBtn.addEventListener('click', populateCameraList); 
         elements.showRawData.addEventListener('change', function() {
             elements.rawDataView.classList.toggle('hidden', !this.checked);
             if (!this.checked && state.isRunning) elements.rawDataContent.textContent = '';
@@ -943,7 +961,7 @@
                 showStatus('Initializing. Please wait for library to load.', false);
                 elements.startGameButton.disabled = true; elements.stopButton.disabled = true; elements.resetGameButton.disabled = true;
                 updateGameDisplay(); 
-                loadFaceApiLibrary(); // This will also call populateCameraList on success
+                loadFaceApiLibrary();
             } catch (e) {
                 console.error("CRITICAL ERROR during initializeApp:", e);
                 showStatus("Critical error on startup. Check console.", true);
