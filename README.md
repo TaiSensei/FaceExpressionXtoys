@@ -1,13 +1,14 @@
 # Facial Expression Game for XToys
 
-This web application uses your camera to detect facial expressions and sends corresponding data (like emotion, intensity, mouth/eye state) to XToys via its cloud webhook service (`webhook.xtoys.app`). It also includes a simple game to track how long you hold certain expressions and states.
+This web application uses your camera to detect facial expressions and sends corresponding data (like emotion, intensity, mouth/eye state) to XToys via its cloud webhook service using your API key. It also includes a simple game to track how long you hold certain expressions and states.
 
 ## How to Use
 
-1.  **Open the HTML File:** Simply open the `index.html` (or whatever you name the file) in a modern web browser that supports camera access (like Chrome, Firefox, Edge).
+1.  **Open the HTML File:** Simply open the `index.html` (or the name of the HTML file) in a modern web browser that supports camera access (like Chrome, Firefox, Edge).
 2.  **Enter Your XToys API Key:**
     * In the "Settings" section, find the input field labeled "XToys API Key."
-    * Enter the API key you obtained from the [XToys Webhook page](https://webhook.xtoys.app/). This is necessary for the app to communicate with your XToys account.
+    * Enter the API key you obtained from the XToys cloud service. This is necessary for the app to communicate with your XToys account.
+    * The application shows an example image (`xtoys_api_key_example.png` - make sure this image is in the same directory as the HTML file) to help you locate where to find this key on the XToys service's interface.
 3.  **Select CDN (Optional):**
     * The application uses a CDN (Content Delivery Network) to load the `face-api.js` library for facial recognition.
     * "jsDelivr" is selected by default and is generally reliable. If you encounter issues loading the library (check the status messages or browser console), you can try switching to "Unpkg" or "GitHack" and clicking "Reload Library."
@@ -31,20 +32,32 @@ This web application uses your camera to detect facial expressions and sends cor
 9.  **Stop Detection:**
     * Click "Stop Camera" to turn off facial detection and release the camera.
 
+## Detected Emotions and IDs
+
+The application can detect the following facial expressions and sends a corresponding numeric ID:
+
+* **neutral:** ID `0`
+* **happy:** ID `1`
+* **sad:** ID `2`
+* **angry:** ID `3`
+* **fearful:** ID `4`
+* **disgusted:** ID `5`
+* **surprised:** ID `6`
+
 ## XToys Script Integration
 
-This application sends data as URL query parameters to the XToys cloud webhook. Your XToys script should be set up to use the "Webhook" trigger and then use the `GetData` action to read these parameters.
+This application sends data as URL query parameters to the XToys cloud webhook using your API key. Your XToys script should be set up to use the "Webhook" trigger and then use the `GetData` action to read these parameters.
 
 Example parameters sent:
 * `intensity`: (0-100)
-* `emotion`: (e.g., "happy", "surprised")
-* `emotionId`: (numeric ID, e.g., 1 for happy)
+* `emotion`: (e.g., "happy", "surprised") - Text name of the emotion.
+* `emotionId`: (numeric ID, e.g., 1 for happy) - As listed in the "Detected Emotions and IDs" section.
 * `mouthOpen`: (1 for open, 0 for closed)
 * `eyesOpen`: (1 for open, 0 for closed)
 * `mouthRatio`: (numeric ratio of mouth openness)
 * `avgEAR`: (numeric average Eye Aspect Ratio)
 
-You can use these values in your XToys script to control toy intensity, trigger patterns, or create other interactive experiences. Refer to the XToys documentation and your example script at [https://xtoys.app/scripts/FacialExpression](https://xtoys.app/scripts/FacialExpression) for how to utilize this data.
+You can use these values in your XToys script to control toy intensity, trigger patterns, or create other interactive experiences. Refer to the XToys documentation and your example script for how to utilize this data. The example script you've provided at `https://xtoys.app/scripts/FacialExpression` is a great reference.
 
 ## Troubleshooting
 
@@ -52,6 +65,8 @@ You can use these values in your XToys script to control toy intensity, trigger 
     * Check your internet connection.
     * Try a different CDN provider and click "Reload Library."
     * Open your browser's developer console (usually F12) for error messages.
+* **Image for API Key Example Not Showing:**
+    * Ensure the image file (e.g., `xtoys_api_key_example.png`) is in the same directory as the HTML file in your repository. If it's in a subfolder, the path in the HTML needs to be updated (e.g., `images/xtoys_api_key_example.png`).
 * **Camera Not Starting:**
     * Ensure you've granted camera permissions to your browser for this page.
     * Try selecting a different camera from the dropdown or refreshing the list.
