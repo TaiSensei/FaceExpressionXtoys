@@ -74,8 +74,8 @@
         }
         #test-btn { background-color: #f0ad4e; }
         #test-btn:hover { background-color: #df983a; }
-        #reload-lib-btn { background-color: #5bc0de; }
-        #reload-lib-btn:hover { background-color: #46b8da; }
+        #reload-lib-btn, #refresh-cameras-btn { background-color: #5bc0de; }
+        #reload-lib-btn:hover, #refresh-cameras-btn:hover { background-color: #46b8da; }
 
         .status {
             padding: 12px 15px;
@@ -153,7 +153,7 @@
         #log-header {
              font-weight:bold; padding-bottom:5px; margin-bottom: 5px; border-bottom: 1px solid #777;
         }
-        .cdn-selector { margin-bottom: 20px; }
+        .cdn-selector, .camera-selector { margin-bottom: 20px; }
         .data-view {
             margin-top: 20px;
             padding: 15px;
@@ -259,6 +259,13 @@
                     <option value="githack">GitHack (Less Reliable)</option>
                 </select>
                 <button id="reload-lib-btn">Reload Library</button>
+            </div>
+             <div class="camera-selector">
+                <label for="camera-select">Select Camera:</label>
+                <select id="camera-select">
+                    <option value="">Default Camera</option>
+                </select>
+                <button id="refresh-cameras-btn">Refresh Camera List</button>
             </div>
             <div>
                 <label for="api-key">XToys API Key:</label>
@@ -374,15 +381,9 @@
             neutral: 0, happy: 1, sad: 2, angry: 3, fearful: 4, disgusted: 5, surprised: 6
         };
 
-        // New map for emotion emojis
         const emotionToEmojiMap = {
-            neutral: '😐',
-            happy: '😊',
-            sad: '😢',
-            angry: '😠',
-            fearful: '😨',
-            disgusted: '🤢',
-            surprised: '😮'
+            neutral: '😐', happy: '😊', sad: '😢', angry: '😠',
+            fearful: '😨', disgusted: '🤢', surprised: '😮'
         };
 
         // DOM elements
@@ -406,6 +407,8 @@
             logEntriesContainer: document.getElementById('log-entries'),
             cdnSelect: document.getElementById('cdn-select'),
             reloadLibBtn: document.getElementById('reload-lib-btn'),
+            cameraSelect: document.getElementById('camera-select'), // New camera select element
+            refreshCamerasBtn: document.getElementById('refresh-cameras-btn'), // New refresh button
             showRawData: document.getElementById('show-raw-data'),
             rawDataView: document.getElementById('raw-data-view'),
             rawDataContent: document.getElementById('raw-data-content'),
@@ -517,6 +520,7 @@
                 await loadModels(cdnConfig.modelBaseUrl);
                 state.isLibraryLoaded = true; elements.startButton.disabled = false;
                 showStatus('Ready for facial expression detection.', false);
+                await populateCameraList(); // Populate camera list after library is ready
             } catch (error) {
                 showStatus(`Failed to load library/models: ${error.message}`, true);
                 addLog(`Critical Load Error: ${error.message}`, 'error');
@@ -534,6 +538,38 @@
                 ]);
                 addLog('Models loaded.', 'success'); return true;
             } catch (error) { console.error("Model Load Error:", error); throw error; }
+        }
+
+        // New function to populate the camera selection dropdown
+        async function populateCameraList() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                addLog("enumerateDevices() not supported.", 'error');
+                elements.cameraSelect.innerHTML = '<option value="">Camera enumeration not supported</option>';
+                return;
+            }
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                elements.cameraSelect.innerHTML = ''; // Clear existing options
+
+                if (videoDevices.length === 0) {
+                    elements.cameraSelect.innerHTML = '<option value="">No cameras found</option>';
+                    addLog("No video input devices found.", "warn");
+                    return;
+                }
+
+                videoDevices.forEach((device, index) => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `Camera ${index + 1}`;
+                    elements.cameraSelect.appendChild(option);
+                });
+                addLog(`Found ${videoDevices.length} camera(s). List populated.`, "success");
+            } catch (err) {
+                addLog(`Error enumerating devices: ${err.message}`, 'error');
+                elements.cameraSelect.innerHTML = `<option value="">Error: ${err.message}</option>`;
+                console.error(err);
+            }
         }
         
         async function sendToXtoysCloud(params) {
@@ -559,16 +595,42 @@
         
         async function startFaceDetection() {
             if (state.isRunning || !state.isLibraryLoaded) { addLog("Cannot start: Running or lib not loaded.", "error"); return; }
+            
+            // Stop any existing stream before starting a new one
+            if (state.currentStream) {
+                state.currentStream.getTracks().forEach(track => track.stop());
+                state.currentStream = null;
+            }
+
+            const selectedDeviceId = elements.cameraSelect.value;
+            const videoConstraints = {
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            };
+            if (selectedDeviceId) {
+                videoConstraints.deviceId = { exact: selectedDeviceId };
+            } else {
+                videoConstraints.facingMode = "user"; // Fallback to user facing if no specific device ID
+            }
+            
             try {
-                state.currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } });
+                state.currentStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
                 elements.video.srcObject = state.currentStream;
                 await new Promise(resolve => { elements.video.onloadedmetadata = resolve; });
                 elements.canvas.width = elements.video.videoWidth; elements.canvas.height = elements.video.videoHeight;
                 state.isRunning = true; elements.startButton.disabled = true; elements.stopButton.disabled = false; elements.startGameButton.disabled = false;
                 state.lastGameTickTime = Date.now(); 
                 state.detectionIntervalId = setInterval(detectFace, config.detectionInterval);
-                showStatus('Camera started. Detection running.', false); addLog('Face detection started.', 'success');
-            } catch (error) { showStatus(`Cam start error: ${error.message}`, true); addLog(`Cam start error: ${error.message}`, 'error'); console.error("Cam Error:", error); }
+                const camName = elements.cameraSelect.options[elements.cameraSelect.selectedIndex]?.text || "Default Camera";
+                showStatus(`Camera "${camName}" started. Detection running.`, false); 
+                addLog(`Face detection started with camera: ${camName}.`, 'success');
+            } catch (error) { 
+                showStatus(`Cam start error: ${error.message}`, true); 
+                addLog(`Cam start error: ${error.message}. Try selecting a different camera or refreshing the list.`, 'error'); 
+                console.error("Cam Error:", error); 
+                // Attempt to populate camera list again if there's a camera error, as permissions might have just been granted.
+                populateCameraList();
+            }
         }
         
         function stopFaceDetection() {
@@ -620,7 +682,7 @@
                 
                 if (resizedDetections.length > 0) {
                     const face = resizedDetections[0]; 
-                    faceapi.draw.drawDetections(elements.canvas, [face]); // Draw only the first detected face box
+                    faceapi.draw.drawDetections(elements.canvas, [face]); 
                     const expressions = face.expressions; 
                     const landmarks = face.landmarks;
 
@@ -674,16 +736,14 @@
                     elements.emotionText.textContent = state.stableExpression;
                     elements.emotionIdText.textContent = expressionIdMap[state.stableExpression] !== undefined ? expressionIdMap[state.stableExpression] : '-';
                     
-                    // Draw emotion emoji
                     const emoji = emotionToEmojiMap[state.stableExpression] || '';
                     if (emoji) {
                         const faceBox = face.detection.box;
-                        const emojiSize = Math.min(faceBox.width, faceBox.height) * 0.7; // Relative to face size
+                        const emojiSize = Math.min(faceBox.width, faceBox.height) * 0.6; 
                         ctx.font = `${emojiSize}px Arial`;
                         ctx.textAlign = 'center';
-                        // Position above and slightly to the right of the face box's center
-                        const emojiX = faceBox.x + faceBox.width * 0.75; 
-                        const emojiY = faceBox.y - emojiSize * 0.1; // Slightly above the top of the box
+                        const emojiX = faceBox.x + faceBox.width + emojiSize * 0.6; // To the right
+                        const emojiY = faceBox.y + faceBox.height * 0.5 + emojiSize * 0.3; // Vertically centered with facebox
                         ctx.fillText(emoji, emojiX, emojiY);
                     }
 
@@ -850,10 +910,12 @@
             elements.resetGameButton.disabled = noTimersRecorded && !state.gameActive;
         }
 
+        // Event Listeners & Initialization
         elements.startButton.addEventListener('click', startFaceDetection);
         elements.stopButton.addEventListener('click', stopFaceDetection);
         elements.testButton.addEventListener('click', testXtoysCloudWebhook);
         elements.reloadLibBtn.addEventListener('click', loadFaceApiLibrary);
+        elements.refreshCamerasBtn.addEventListener('click', populateCameraList); // Listener for refresh button
         elements.showRawData.addEventListener('change', function() {
             elements.rawDataView.classList.toggle('hidden', !this.checked);
             if (!this.checked && state.isRunning) elements.rawDataContent.textContent = '';
@@ -881,7 +943,7 @@
                 showStatus('Initializing. Please wait for library to load.', false);
                 elements.startGameButton.disabled = true; elements.stopButton.disabled = true; elements.resetGameButton.disabled = true;
                 updateGameDisplay(); 
-                loadFaceApiLibrary();
+                loadFaceApiLibrary(); // This will also call populateCameraList on success
             } catch (e) {
                 console.error("CRITICAL ERROR during initializeApp:", e);
                 showStatus("Critical error on startup. Check console.", true);
