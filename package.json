@@ -1,0 +1,16 @@
+{
+  "name": "face-expression-xtoys",
+  "version": "1.0.0",
+  "description": "Face expression contest game with XToys integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "setup": "node setup.js"
+  },
+  "dependencies": {
+    "@mediapipe/camera_utils": "0.3.1675466862",
+    "@mediapipe/hands": "0.4.1646424915",
+    "@vladmandic/face-api": "1.7.2",
+    "express": "^4.18.2"
+  }
+}
