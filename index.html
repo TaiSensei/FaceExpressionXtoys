@@ -181,13 +181,67 @@
             padding: 5px 12px;
             z-index: 3; pointer-events: none;
         }
-        .hud-icon {
+.hud-icon {
             font-size: 1.25rem;
             opacity: 0.22;
             transition: opacity 0.12s, filter 0.12s;
             filter: grayscale(1);
         }
         .hud-icon.active { opacity: 1; filter: grayscale(0); }
+        @keyframes hudBounce {
+            0%   { transform: scale(1); }
+            35%  { transform: scale(1.55) rotate(-8deg); }
+            60%  { transform: scale(1.3)  rotate(5deg); }
+            100% { transform: scale(1); }
+        }
+        .hud-icon.flash { animation: hudBounce 0.42s cubic-bezier(.36,.07,.19,.97) both; }
+
+        /* Camera glow on activation */
+        @keyframes critGlow {
+            0%   { box-shadow: var(--palm-shadow, none), 0 0 0 0px var(--glow-c,#7c3aed); }
+            40%  { box-shadow: var(--palm-shadow, none), 0 0 0 10px color-mix(in srgb, var(--glow-c,#7c3aed) 0%, transparent); }
+            100% { box-shadow: var(--palm-shadow, none), 0 0 0 0px transparent; }
+        }
+        .video-wrap.crit-glow { animation: critGlow 0.55s ease-out; }
+        @keyframes comboGlow {
+            0%   { box-shadow: 0 0 0 0 rgba(234,179,8,0.9), 0 0 0 0 rgba(124,58,237,0.5); }
+            50%  { box-shadow: 0 0 0 14px rgba(234,179,8,0), 0 0 40px 6px rgba(234,179,8,0.25); }
+            100% { box-shadow: 0 0 0 0 transparent, 0 0 0 0 transparent; }
+        }
+        .video-wrap.combo-glow { animation: comboGlow 0.7s ease-out; }
+
+        /* Countdown overlay on video */
+        #countdown-overlay {
+            position: absolute; inset: 0; display: flex;
+            align-items: center; justify-content: center;
+            pointer-events: none; z-index: 20;
+        }
+        #countdown-num {
+            font-size: 7rem; font-weight: 900; line-height: 1;
+            color: #fff; text-shadow: 0 0 30px rgba(124,58,237,0.9), 0 2px 8px rgba(0,0,0,0.6);
+            opacity: 0;
+        }
+        @keyframes cdPop {
+            0%   { opacity: 0;   transform: scale(2.2); }
+            20%  { opacity: 1;   transform: scale(1); }
+            70%  { opacity: 1;   transform: scale(1); }
+            100% { opacity: 0;   transform: scale(0.6); }
+        }
+        #countdown-num.pop { animation: cdPop 0.9s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes cdGo {
+            0%   { opacity: 0;   transform: scale(0.5); }
+            25%  { opacity: 1;   transform: scale(1.15); }
+            55%  { opacity: 1;   transform: scale(1); }
+            100% { opacity: 0;   transform: scale(0.8); }
+        }
+        #countdown-num.go { animation: cdGo 0.7s ease-out both; color: #4ade80;
+            text-shadow: 0 0 30px rgba(22,163,74,0.9), 0 2px 8px rgba(0,0,0,0.6); }
+
+        /* Criteria elapsed time bar */
+        .crit-bar-wrap { margin-top: 5px; height: 3px; background: rgba(0,0,0,0.08); border-radius: 2px; overflow: hidden; }
+        .crit-bar-fill { height: 100%; border-radius: 2px; width: 0%; background: #16a34a; transition: width 0.5s linear; }
+        .criteria-card.active .crit-bar-fill { background: #16a34a; }
+        .criteria-card:not(.active) .crit-bar-fill { background: #94a3b8; }
 
         /* TIMER */
         .timer-bar-wrap { margin-top: 16px; width: 100%; }
@@ -5334,11 +5388,12 @@ return a / b;`,Tne=`
 <div class="video-wrap" id="video-wrap">
                 <video id="video" autoplay muted playsinline></video>
                 <canvas id="face-canvas"></canvas>
+                <div id="countdown-overlay"><span id="countdown-num"></span></div>
                 <div class="face-hud" id="face-hud">
                     <span id="hud-eyes"  class="hud-icon">&#128065;</span>
                     <span id="hud-smile" class="hud-icon">&#128522;</span>
-                    <span id="hud-brows" class="hud-icon">&#128528;</span>
-                    <span id="hud-gaze"  class="hud-icon">&#127919;</span>
+                    <span id="hud-brows" class="hud-icon">&#129320;</span>
+                    <span id="hud-gaze"  class="hud-icon">&#127917;</span>
                     <span id="hud-stable" class="hud-icon">&#129504;</span>
                 </div>
                 <div class="expr-badge" style="flex:1">
@@ -5365,6 +5420,66 @@ return a / b;`,Tne=`
             </div>
         </div>
 
+        <!-- How to Play -->
+        <div class="panel" style="font-size:0.82rem;line-height:1.6;color:var(--muted)">
+            <div class="panel-title">How to Play</div>
+            <p style="margin-bottom:12px">Hit <strong style="color:var(--text)">Start</strong> and hold your best face for the whole round — your camera does all the work. No buttons, no controllers. Just your face.</p>
+
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+                <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+                    <span style="font-size:1.3rem;flex-shrink:0">&#128065;&#65039;</span>
+                    <div><strong style="color:var(--text)">Eyes Open</strong> — keep both eyes wide open.</div>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+                    <span style="font-size:1.3rem;flex-shrink:0">&#128522;</span>
+                    <div><strong style="color:var(--text)">Smile</strong> — give your biggest, happiest smile.</div>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+                    <span style="font-size:1.3rem;flex-shrink:0">&#129320;</span>
+                    <div><strong style="color:var(--text)">Brows Raised</strong> — raise your eyebrows as high as they'll go.</div>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+                    <span style="font-size:1.3rem;flex-shrink:0">&#127917;</span>
+                    <div><strong style="color:var(--text)">Expression Lock</strong> — press <strong>Lock Expression</strong> to save the face you're making, then keep holding that expression.</div>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+                    <span style="font-size:1.3rem;flex-shrink:0">&#128208;</span>
+                    <div><strong style="color:var(--text)">Head Still</strong> — stay as still as possible and don't move your head around.</div>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px;background:rgba(124,58,237,0.07);border:1px solid rgba(124,58,237,0.2);border-radius:8px;padding:10px 12px">
+                    <span style="font-size:1.3rem;flex-shrink:0">&#9889;</span>
+                    <div><strong style="color:var(--accent)">Combo Bonus</strong> — nail all five at the same time for extra points!</div>
+                </div>
+            </div>
+
+            <p style="margin-bottom:8px"><strong style="color:var(--text)">How scoring works:</strong> Every second you hold an expression, you earn a point for it. Hold more expressions at once to rack up points faster. The cards on the right light up when you're scoring, and a little bar fills up as your time grows.</p>
+            <p><strong style="color:var(--text)">Palm pause</strong> — hold an open hand up to the camera to pause scoring. Put it down to keep going. The camera border turns orange when paused.</p>
+
+            <!-- Technical Details Dropdown -->
+            <details style="margin-top:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+                <summary style="cursor:pointer;padding:9px 13px;font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);background:var(--surface2);list-style:none;display:flex;align-items:center;gap:6px">
+                    <span>&#9881;&#65039;</span> Technical Details
+                </summary>
+                <div style="padding:12px 14px;font-size:0.78rem;line-height:1.7">
+                    <table style="width:100%;border-collapse:collapse">
+                        <thead><tr style="color:var(--text);font-weight:700;border-bottom:1px solid var(--border)">
+                            <th style="text-align:left;padding:4px 6px">Criterion</th>
+                            <th style="text-align:left;padding:4px 6px">Detection threshold</th>
+                        </tr></thead>
+                        <tbody>
+                            <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 6px">&#128065;&#65039; Eyes Open</td><td style="padding:5px 6px">Eye Aspect Ratio (EAR) &gt; 0.2 (both eyes)</td></tr>
+                            <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 6px">&#128522; Smile</td><td style="padding:5px 6px">Happy expression confidence &gt; 38%, or dominant emotion is <em>happy</em></td></tr>
+                            <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 6px">&#129320; Brows Raised</td><td style="padding:5px 6px">Brow peak &ge; 1.5&times; eye-height above top eyelid (both brows)</td></tr>
+                            <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 6px">&#127917; Expression Lock</td><td style="padding:5px 6px">Locked emotion must remain dominant at &gt; 28% confidence</td></tr>
+                            <tr style="border-bottom:1px solid var(--border)"><td style="padding:5px 6px">&#128208; Head Still</td><td style="padding:5px 6px">Nose-tip displacement &lt; 14 px over a 600 ms rolling window</td></tr>
+                            <tr><td style="padding:5px 6px">&#9889; Combo</td><td style="padding:5px 6px">All five criteria active simultaneously; tracked as a separate counter</td></tr>
+                        </tbody>
+                    </table>
+                    <p style="margin-top:10px;color:var(--muted)"><strong style="color:var(--text)">Score formula:</strong> each criterion accumulates <em>active seconds</em> independently. Final score = sum of active seconds across all five criteria. Maximum possible = 900 s &times; 5 = 4 500 pts per 3-minute round. Combo seconds are counted on top of individual criteria.</p>
+                </div>
+            </details>
+        </div>
+
         <!-- Scoring Criteria -->
         <div class="panel">
             <div class="panel-title">Scoring Criteria (live)</div>
@@ -5374,6 +5489,7 @@ return a / b;`,Tne=`
                     <div class="criteria-info">
                         <div class="criteria-name">Eyes Open</div>
                         <div class="criteria-pts" id="pts-eyes">0 <span>pts</span></div>
+                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-eyes"></div></div>
                     </div>
                 </div>
                 <div class="criteria-card" id="crit-smile">
@@ -5381,20 +5497,23 @@ return a / b;`,Tne=`
                     <div class="criteria-info">
                         <div class="criteria-name">Smile</div>
                         <div class="criteria-pts" id="pts-smile">0 <span>pts</span></div>
+                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-smile"></div></div>
                     </div>
                 </div>
                 <div class="criteria-card" id="crit-brows">
-                    <div class="criteria-icon">&#128578;</div>
+                    <div class="criteria-icon">&#129320;</div>
                     <div class="criteria-info">
-                        <div class="criteria-name">Brows Relaxed</div>
+                        <div class="criteria-name">Brows Raised</div>
                         <div class="criteria-pts" id="pts-brows">0 <span>pts</span></div>
+                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-brows"></div></div>
                     </div>
                 </div>
                 <div class="criteria-card" id="crit-gaze">
-                    <div class="criteria-icon">&#127919;</div>
+                    <div class="criteria-icon">&#127917;</div>
                     <div class="criteria-info">
-                        <div class="criteria-name">Eye Gaze Forward</div>
+                        <div class="criteria-name">Expression Lock</div>
                         <div class="criteria-pts" id="pts-gaze">0 <span>pts</span></div>
+                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-gaze"></div></div>
                     </div>
                 </div>
                 <div class="criteria-card" id="crit-stable">
@@ -5402,6 +5521,7 @@ return a / b;`,Tne=`
                     <div class="criteria-info">
                         <div class="criteria-name">Head Still</div>
                         <div class="criteria-pts" id="pts-stable">0 <span>pts</span></div>
+                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-stable"></div></div>
                     </div>
                 </div>
                 <div class="criteria-card" id="crit-combo">
@@ -5409,6 +5529,7 @@ return a / b;`,Tne=`
                     <div class="criteria-info">
                         <div class="criteria-name">Combo Bonus</div>
                         <div class="criteria-pts" id="pts-combo">0 <span>pts</span></div>
+                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-combo"></div></div>
                     </div>
                 </div>
             </div>
@@ -5558,19 +5679,23 @@ return a / b;`,Tne=`
                     <button class="btn btn-danger" id="stop-game-btn" disabled>&#9632; Stop</button>
                     <button class="btn btn-secondary" id="reset-game-btn" disabled>&#8635; Reset</button>
                 </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <button class="btn btn-secondary" id="lock-expr-btn" style="flex:none">&#127917; Lock Expression</button>
+                    <span id="lock-status" style="font-size:0.78rem;color:var(--muted)">Not set &mdash; face camera &amp; press</span>
+                </div>
             </div>
         </div>
 
         <!-- Score Breakdown -->
         <div class="panel">
-            <div class="panel-title">Score Breakdown</div>
+            <div class="panel-title">Time Breakdown</div>
             <table class="breakdown-table">
-                <tr><td>&#128065;&#65039; Eyes Open</td><td id="bd-eyes">0</td></tr>
-                <tr><td>&#128522; Smile</td><td id="bd-smile">0</td></tr>
-                <tr><td>&#128578; Brows Relaxed</td><td id="bd-brows">0</td></tr>
-                <tr><td>&#127919; Eye Gaze</td><td id="bd-gaze">0</td></tr>
-                <tr><td>&#128208; Head Still</td><td id="bd-stable">0</td></tr>
-                <tr><td>&#9889; Combo Bonus</td><td id="bd-combo">0</td></tr>
+                <tr><td>&#128065;&#65039; Eyes Open</td><td id="bd-eyes">0s</td></tr>
+                <tr><td>&#128522; Smile</td><td id="bd-smile">0s</td></tr>
+                <tr><td>&#129320; Brows Raised</td><td id="bd-brows">0s</td></tr>
+                <tr><td>&#127917; Expr Lock</td><td id="bd-gaze">0s</td></tr>
+                <tr><td>&#128208; Head Still</td><td id="bd-stable">0s</td></tr>
+                <tr><td>&#9889; Combo</td><td id="bd-combo">0s</td></tr>
             </table>
         </div>
 
@@ -5591,13 +5716,13 @@ return a / b;`,Tne=`
 // ============================================================
 //  CONFIG
 // ============================================================
-const GAME_DURATION_SEC = 300;   // 5-minute max
+const GAME_DURATION_SEC = 180;   // 3-minute max
 const DETECTION_MS      = 100;   // face detection tick
 const SCORE_TICK_MS     = 500;   // scoring interval
-const MAX_SCORE_RING    = 3000;  // score at which ring fills
+const MAX_SCORE_SEC = GAME_DURATION_SEC * 5; // max possible total active-seconds (all 5 criteria full game)
 
 // Points awarded per 500ms tick per criterion
-const PTS = { eyes: 2, smile: 3, brows: 2, gaze: 2, stable: 2, combo: 5 };
+// Points per tick replaced by time tracking — see scoreTick()
 
 // Head stability: nose tip movement budget per detection tick (pixels in video space)
 const HEAD_MOVE_PX_THRESH  = 14;   // pixel distance above which head is "moving"
@@ -5640,7 +5765,9 @@ const state = {
     gameElapsed: 0,
     score: 0,
     bd: { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 },
-    criteria: { eyes:false, smile:false, brows:false, gaze:false, stable:false },
+    criteria:     { eyes:false, smile:false, brows:false, gaze:false, stable:false },
+    critTime:     { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 },
+    prevCriteria: { eyes:false, smile:false, brows:false, gaze:false, stable:false },
     // expression smoothing
     exprHistory: [],
     stableExpr: 'neutral',
@@ -5656,6 +5783,8 @@ const state = {
     palmDetected: false,
     // player
     playerName: '',
+    // expression lock
+    exprLock: null,
 };
 
 // ============================================================
@@ -5700,6 +5829,9 @@ const el = {
     hudBrows:      $('hud-brows'),
     hudGaze:       $('hud-gaze'),
     hudStable:     $('hud-stable'),
+    lockBtn:       $('lock-expr-btn'),
+    lockStatus:    $('lock-status'),
+    cdNum:         $('countdown-num'),
     logEntries:    $('log-entries'),
     videoWrap:     $('video-wrap'),
     palmIndicator: $('palm-indicator'),
@@ -5713,6 +5845,10 @@ const el = {
     critGaze:  $('crit-gaze'),  ptsGaze:  $('pts-gaze'),
     critStable:$('crit-stable'),ptsStable:$('pts-stable'),
     critCombo: $('crit-combo'), ptsCombo: $('pts-combo'),
+    // time bars
+    barEyes:  $('bar-eyes'),  barSmile: $('bar-smile'),
+    barBrows: $('bar-brows'), barGaze:  $('bar-gaze'),
+    barStable:$('bar-stable'),barCombo: $('bar-combo'),
     // breakdown
     bdEyes:  $('bd-eyes'),  bdSmile: $('bd-smile'),
     bdBrows: $('bd-brows'), bdGaze:  $('bd-gaze'),
@@ -5893,32 +6029,68 @@ function getEAR(eye) {
  * should be centered horizontally within the eye bounding box.
  * Face landmarks (68-point): left eye 36-41, right eye 42-47.
  */
-function checkGaze(landmarks) {
-    const pts = landmarks.positions;
-    function isCentered(inner, outer, topLid, botLid) {
-        const eyeW = Math.abs(outer.x - inner.x);
-        if (eyeW < 2) return false;
-        const irisX = (topLid.x + botLid.x) / 2;
-        const rel   = (irisX - inner.x) / eyeW;
-        return rel > 0.28 && rel < 0.72;
+/** 3-2-1 countdown then snapshot expression for the Expression Lock criterion. */
+function captureExprLock() {
+    if (!state.isRunning) { addLog('Start camera first to capture expression.', 'warn'); return; }
+    if (el.lockBtn.disabled) return;
+    el.lockBtn.disabled = true;
+    el.lockStatus.style.color = 'var(--muted)';
+    el.lockStatus.textContent = 'Get ready\u2026';
+
+    const cdEl = document.getElementById('countdown-num');
+    let count = 3;
+
+    function showNum(val, cls, cb) {
+        cdEl.textContent = val;
+        cdEl.className = cls;
+        // re-trigger animation if same class used before
+        void cdEl.offsetWidth;
+        cdEl.className = cls;
+        setTimeout(cb, 950);
     }
-    const lOk = isCentered(pts[36], pts[39], pts[37], pts[41]);
-    const rOk = isCentered(pts[42], pts[45], pts[43], pts[47]);
-    return lOk && rOk;
+
+    function tick() {
+        if (count > 0) {
+            showNum(count, 'pop', () => { count--; tick(); });
+        } else {
+            showNum('\uD83C\uDFAD', 'go', () => {
+                cdEl.className = '';
+                el.lockBtn.disabled = false;
+                const expr = state.stableExpr;
+                if (!expr || expr === 'neutral') {
+                    addLog('Could not lock — try making a clear expression.', 'warn');
+                    el.lockStatus.textContent = 'Try again \u2014 no clear expression';
+                    el.lockStatus.style.color = 'var(--muted)';
+                    return;
+                }
+                state.exprLock = expr;
+                const icon = EMOJI_MAP[expr] || '\uD83D\uDE10';
+                addLog('Expression locked: ' + icon + ' ' + expr + ' \u2014 maintain it to score!', 'success');
+                el.lockStatus.textContent = icon + '\u00A0' + expr;
+                el.lockStatus.style.color = 'var(--green)';
+            });
+        }
+    }
+    tick();
 }
 
 /**
- * Brow relaxed check: detect frown by comparing brow peak height vs
- * eye center height and inner-brow horizontal gap relative to face width.
+ * Brows raised: brow peak must sit at least 1.5× the eye's own height
+ * above the top eyelid.  Reliably distinguishes a lifted brow from neutral/frown.
+ * Landmarks: left brow peak=19, right brow peak=24;
+ * left eye top=(37+38)/2, bot=(40+41)/2; right eye top=(43+44)/2, bot=(46+47)/2.
  */
-function checkBrowsRelaxed(landmarks) {
+function checkBrowsRaised(landmarks) {
     const pts = landmarks.positions;
-    const leftBrowH  = pts[38].y - pts[19].y;  // positive = brow above eye mid
-    const rightBrowH = pts[43].y - pts[24].y;
-    const innerGap   = Math.abs(pts[21].x - pts[22].x);
-    const faceW      = Math.abs(pts[0].x - pts[16].x) || 1;
-    const isFrowning = (leftBrowH < 5 || rightBrowH < 5) && (innerGap / faceW) < 0.12;
-    return !isFrowning;
+    const lEyeTopY = (pts[37].y + pts[38].y) / 2;
+    const lEyeBotY = (pts[40].y + pts[41].y) / 2;
+    const lEyeH   = Math.max(lEyeBotY - lEyeTopY, 1);
+    const rEyeTopY = (pts[43].y + pts[44].y) / 2;
+    const rEyeBotY = (pts[46].y + pts[47].y) / 2;
+    const rEyeH   = Math.max(rEyeBotY - rEyeTopY, 1);
+    const lRaise  = (lEyeTopY - pts[19].y) / lEyeH;
+    const rRaise  = (rEyeTopY - pts[24].y) / rEyeH;
+    return lRaise > 1.5 && rRaise > 1.5;
 }
 
 /** Nose tip (landmark 30) for head stability tracking */
@@ -6053,8 +6225,10 @@ async function detectFace() {
             const eyesOpen = avgEAR > eyeThresh;
 
             const isSmiling = state.stableExpr === 'happy' || (expressions.happy || 0) > 0.38;
-            const browsOk   = checkBrowsRelaxed(landmarks);
-            const gazeOk    = eyesOpen ? checkGaze(landmarks) : false;
+            const browsOk   = checkBrowsRaised(landmarks);
+            const gazeOk    = state.exprLock
+                ? (state.stableExpr === state.exprLock || (expressions[state.exprLock] || 0) > 0.22)
+                : false;
 
             // Head stability (nose-tip tracking)
             const nose = getNoseTip(landmarks);
@@ -6139,22 +6313,65 @@ async function detectFace() {
     } catch (e) { console.error('detectFace error:', e); }
 }
 
+function flashHud(hudEl, glowColor, isCombo) {
+    hudEl.classList.remove('flash');
+    void hudEl.offsetWidth;
+    hudEl.classList.add('flash');
+    hudEl.addEventListener('animationend', () => hudEl.classList.remove('flash'), { once: true });
+    if (isCombo) {
+        el.videoWrap.classList.remove('combo-glow', 'crit-glow');
+        void el.videoWrap.offsetWidth;
+        el.videoWrap.classList.add('combo-glow');
+        el.videoWrap.addEventListener('animationend', () => el.videoWrap.classList.remove('combo-glow'), { once: true });
+    } else {
+        el.videoWrap.style.setProperty('--glow-c', glowColor);
+        el.videoWrap.classList.remove('crit-glow', 'combo-glow');
+        void el.videoWrap.offsetWidth;
+        el.videoWrap.classList.add('crit-glow');
+        el.videoWrap.addEventListener('animationend', () => el.videoWrap.classList.remove('crit-glow'), { once: true });
+    }
+}
+
 function refreshCritCards() {
-    const c = state.criteria;
+    const c    = state.criteria;
+    const prev = state.prevCriteria;
+    const combo = c.eyes && c.smile && c.brows && c.gaze && c.stable;
+    const prevCombo = prev.eyes && prev.smile && prev.brows && prev.gaze && prev.stable;
+    const tickSec = SCORE_TICK_MS / 1000;
+    const maxSec  = GAME_DURATION_SEC;
+
+    // Detect activations and fire flashes
+    if (c.eyes   && !prev.eyes)   flashHud(el.hudEyes,   '#7c3aed', false);
+    if (c.smile  && !prev.smile)  flashHud(el.hudSmile,  '#16a34a', false);
+    if (c.brows  && !prev.brows)  flashHud(el.hudBrows,  '#0891b2', false);
+    if (c.gaze   && !prev.gaze)   flashHud(el.hudGaze,   '#7c3aed', false);
+    if (c.stable && !prev.stable) flashHud(el.hudStable, '#0891b2', false);
+    if (combo    && !prevCombo)   flashHud(el.hudStable, '#eab308', true);
+
+    state.prevCriteria = { eyes: c.eyes, smile: c.smile, brows: c.brows, gaze: c.gaze, stable: c.stable };
+
     setCard(el.critEyes,  c.eyes);
     setCard(el.critSmile, c.smile);
     setCard(el.critBrows, c.brows);
     setCard(el.critGaze,  c.gaze);
     setCard(el.critStable,c.stable);
-    const combo = c.eyes && c.smile && c.brows && c.gaze && c.stable;
     setCard(el.critCombo, combo);
 
-    el.ptsEyes.innerHTML   = state.bd.eyes   + ' <span>pts</span>';
-    el.ptsSmile.innerHTML  = state.bd.smile  + ' <span>pts</span>';
-    el.ptsBrows.innerHTML  = state.bd.brows  + ' <span>pts</span>';
-    el.ptsGaze.innerHTML   = state.bd.gaze   + ' <span>pts</span>';
-    el.ptsStable.innerHTML = state.bd.stable + ' <span>pts</span>';
-    el.ptsCombo.innerHTML  = state.bd.combo  + ' <span>pts</span>';
+    el.ptsEyes.innerHTML   = fmtSec(state.bd.eyes);
+    el.ptsSmile.innerHTML  = fmtSec(state.bd.smile);
+    el.ptsBrows.innerHTML  = fmtSec(state.bd.brows);
+    el.ptsGaze.innerHTML   = fmtSec(state.bd.gaze);
+    el.ptsStable.innerHTML = fmtSec(state.bd.stable);
+    el.ptsCombo.innerHTML  = fmtSec(state.bd.combo);
+
+    // Elapsed time bars
+    const t = state.critTime;
+    el.barEyes.style.width   = Math.min(100, (t.eyes   / maxSec) * 100) + '%';
+    el.barSmile.style.width  = Math.min(100, (t.smile  / maxSec) * 100) + '%';
+    el.barBrows.style.width  = Math.min(100, (t.brows  / maxSec) * 100) + '%';
+    el.barGaze.style.width   = Math.min(100, (t.gaze   / maxSec) * 100) + '%';
+    el.barStable.style.width = Math.min(100, (t.stable / maxSec) * 100) + '%';
+    el.barCombo.style.width  = Math.min(100, (t.combo  / maxSec) * 100) + '%';
 }
 function setCard(card, active) { card.classList.toggle('active', !!active); }
 
@@ -6169,6 +6386,8 @@ function startGame() {
     state.gameElapsed   = 0;
     state.score         = 0;
     state.bd            = { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 };
+    state.critTime      = { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 };
+    state.prevCriteria  = { eyes:false, smile:false, brows:false, gaze:false, stable:false };
 
     el.startGameBtn.disabled = true;
     el.stopGameBtn.disabled  = false;
@@ -6191,14 +6410,15 @@ function scoreTick() {
     }
 
     const c = state.criteria;
-    if (c.eyes)   { state.bd.eyes   += PTS.eyes;   state.score += PTS.eyes; }
-    if (c.smile)  { state.bd.smile  += PTS.smile;  state.score += PTS.smile; }
-    if (c.brows)  { state.bd.brows  += PTS.brows;  state.score += PTS.brows; }
-    if (c.gaze)   { state.bd.gaze   += PTS.gaze;   state.score += PTS.gaze; }
-    if (c.stable) { state.bd.stable += PTS.stable; state.score += PTS.stable; }
+    const tick = SCORE_TICK_MS / 1000;
+    if (c.eyes)   { state.bd.eyes   += tick; state.score += tick; state.critTime.eyes   += tick; }
+    if (c.smile)  { state.bd.smile  += tick; state.score += tick; state.critTime.smile  += tick; }
+    if (c.brows)  { state.bd.brows  += tick; state.score += tick; state.critTime.brows  += tick; }
+    if (c.gaze)   { state.bd.gaze   += tick; state.score += tick; state.critTime.gaze   += tick; }
+    if (c.stable) { state.bd.stable += tick; state.score += tick; state.critTime.stable += tick; }
     if (c.eyes && c.smile && c.brows && c.gaze && c.stable) {
-        state.bd.combo += PTS.combo;
-        state.score    += PTS.combo;
+        state.bd.combo += tick;
+        state.critTime.combo += tick;
     }
 
     updateScoreUI();
@@ -6226,6 +6446,7 @@ function resetGame() {
     if (state.gameActive) stopGame(false);
     state.score       = 0;
     state.bd          = { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 };
+    state.critTime    = { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 };
     state.gameElapsed = 0;
     el.resetGameBtn.disabled = true;
     if (state.isRunning) el.startGameBtn.disabled = false;
@@ -6234,11 +6455,17 @@ function resetGame() {
     addLog('Game reset.');
 }
 
-function updateScoreUI() {
-    el.scoreDisplay.textContent = state.score;
+function fmtSec(s) {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return m > 0 ? m + 'm ' + String(sec).padStart(2,'0') + 's' : Math.floor(s) + 's';
+}
 
-    // Score segments (0=bottom, 9=top; rendered top-to-bottom in DOM)
-    const scorePct = Math.min(1, state.score / MAX_SCORE_RING);
+function updateScoreUI() {
+    el.scoreDisplay.textContent = fmtSec(state.score);
+
+    // Score segments fill based on total active-seconds vs max possible
+    const scorePct = Math.min(1, state.score / MAX_SCORE_SEC);
     const litCount = Math.round(scorePct * 10);
     el.scoreBars.querySelectorAll('.score-seg').forEach(seg => {
         seg.classList.toggle('lit', parseInt(seg.dataset.seg) < litCount);
@@ -6257,12 +6484,12 @@ function updateScoreUI() {
     });
 
     // Breakdown table
-    el.bdEyes.textContent   = state.bd.eyes;
-    el.bdSmile.textContent  = state.bd.smile;
-    el.bdBrows.textContent  = state.bd.brows;
-    el.bdGaze.textContent   = state.bd.gaze;
-    el.bdStable.textContent = state.bd.stable;
-    el.bdCombo.textContent  = state.bd.combo;
+    el.bdEyes.textContent   = fmtSec(state.bd.eyes);
+    el.bdSmile.textContent  = fmtSec(state.bd.smile);
+    el.bdBrows.textContent  = fmtSec(state.bd.brows);
+    el.bdGaze.textContent   = fmtSec(state.bd.gaze);
+    el.bdStable.textContent = fmtSec(state.bd.stable);
+    el.bdCombo.textContent  = fmtSec(state.bd.combo);
 }
 
 // ============================================================
@@ -6429,6 +6656,7 @@ el.reloadLibBtn.addEventListener('click', loadFaceApiLibrary);
 el.startGameBtn.addEventListener('click', showNameModal);
 el.stopGameBtn.addEventListener('click', () => stopGame(false));
 el.resetGameBtn.addEventListener('click', resetGame);
+el.lockBtn.addEventListener('click', captureExprLock);
 el.showRaw.addEventListener('change', function () {
     el.rawView.classList.toggle('hidden', !this.checked);
 });
