@@ -1,38 +1,38 @@
-# Facial Expression Game for XToys
+# Facial Expression Game for XToys + Motorbunny
 
-This web application uses your camera to detect facial expressions and sends corresponding data (like emotion, intensity, mouth/eye state) to XToys via its cloud webhook service using your Webhook ID. It also includes a simple game to track how long you hold certain expressions and states.
+This web application uses your camera to detect facial expressions and drives a toy in one of three ways:
+
+* **XToys cloud webhook** — original behaviour. Sends emotion / intensity params to your XToys webhook.
+* **Local webhook URL** — same params, posted to any local HTTP endpoint.
+* **Bluetooth (Motorbunny direct)** — *new on the `taisensei` branch.* Drives a Motorbunny Classic directly over Web Bluetooth, no XToys or internet required.
+* **XToys + Bluetooth (both)** — sends webhook params *and* writes BLE vibration in parallel.
+
+It also includes a configurable "smile contest" round where intensity ramps up over the round duration and decays whenever the smile criterion breaks.
+
+## What's new on `taisensei`
+
+* **Direct Motorbunny BLE control** via the Web Bluetooth API (Chrome / Edge / Opera on desktop, Android Chrome). No XToys subscription needed for local-only play. The browser pairs with a device advertising the name `MB Controller`, writes to characteristic `0000fff6-…` on service `0000fff0-…`, and uses the 17-byte vibrate / 6-byte stop packets from the open Motorbunny protocol.
+* **Configurable round system.** Set the round duration (default **180 s**), start intensity (default **3 %**) and end intensity (default **100 %**) in *Settings → Round & Intensity*. The toy ramps linearly from start → end across the round.
+* **Smile-break decay.** When the smile criterion is enabled but currently broken, the live intensity bleeds at a configurable rate (default **1 % / second**) until the user resumes smiling, at which point it recovers toward the ramp target. Configurable in *Settings → Smile-break decay*.
+* **Per-criterion scoring checkboxes** for Eyes / Smile / Brows / Expression-lock / Head-still — all on by default. Untick to ignore a criterion both for scoring and for the smile-break logic.
+* **Neutral baseline capture.** Press *Capture Neutral Baseline* (Game Controls panel), hold a relaxed face through the 3-2-1 countdown, and the app records your personal neutral brow-height and mouth-width ratios. After that, "smile" and "brows raised" are evaluated as *deltas vs your baseline* instead of fixed thresholds — much more reliable across face shapes and camera angles.
 
 ## How to Use
 
-1.  **Open the HTML File:** Simply open the `index.html` (or the name of the HTML file) in a modern web browser that supports camera access (like Chrome, Firefox, Edge).
-2.  **Enter Your XToys Webhook ID:**
-    * In the "Settings" section, find the input field labeled "XToys Webhook ID."
-    * Enter the Webhook ID you obtained from the XToys cloud service. This is necessary for the app to communicate with your XToys account.
-    * The application shows an example image (`xtoys_api_key_example.png` - make sure this image is in the same directory as the HTML file) to help you locate where to find this key on the XToys service's interface.
-3.  **Select CDN (Optional):**
-    * The application uses a CDN (Content Delivery Network) to load the `face-api.js` library for facial recognition.
-    * "jsDelivr" is selected by default and is generally reliable. If you encounter issues loading the library (check the status messages or browser console), you can try switching to "Unpkg" or "GitHack" and clicking "Reload Library."
-4.  **Select Camera (Optional):**
-    * The application will attempt to list available cameras.
-    * If you have multiple cameras, select your preferred one from the "Select Camera" dropdown.
-    * Click "Refresh Camera List" if your camera doesn't appear initially or if you plug in a new one. If no camera is selected, it will try to use the default system camera.
-5.  **Start the Camera:**
-    * Once the library is loaded (status message will indicate "Ready..."), click the "Start Camera" button.
-    * Your browser will likely ask for permission to access your camera. Please allow it.
-6.  **Facial Detection & XToys Communication:**
-    * The app will start detecting your face and expressions.
-    * The "Live Status" section will show the detected stable emotion, its ID, mouth/eye state, and the calculated intensity being sent to XToys.
-    * Data is sent to the XToys cloud webhook based on the "Update Interval" setting or when significant changes in expression/state occur.
-7.  **Expression Game (Optional):**
-    * Click "Start Expression Game" to begin tracking time spent in various states (Happy, Surprised, Mouth Open/Closed, Eyes Open/Closed).
-    * A simple score is calculated based on "Time Mouth Closed" + "Time Happy."
-    * Use "Stop Game" and "Reset Game Stats" as needed.
-8.  **Test Webhook (Optional):**
-    * Click "Test XToys Cloud Webhook" to send a predefined test signal to XToys. This helps verify your Webhook ID and connection.
-9.  **Stop Detection:**
-    * Click "Stop Camera" to turn off facial detection and release the camera.
+1. **Open `index.html`** in a modern browser (Chrome / Edge recommended — Web Bluetooth only works there).
+2. **Choose Output Mode** in *Settings → Output Mode*:
+   * *Cloud (XToys)* — paste your XToys Webhook ID below.
+   * *Local Server* — set the local URL (default `http://localhost:3000/webhook`).
+   * *Bluetooth (Motorbunny direct)* — click **Connect** and pick `MB Controller` from the browser's BLE picker. Pair the toy in your OS first if needed.
+   * *XToys + Bluetooth* — both at once.
+3. **Start Camera** (after models load). Allow camera permission.
+4. *(Optional)* Press **Capture Neutral Baseline** with a relaxed face for adaptive smile/brow detection.
+5. *(Optional)* Press **Lock Expression** to set the Expression-Lock criterion to whatever face you make.
+6. **Start Game** → enter player name → the round runs for the configured duration. The score is the sum of *active seconds* across enabled criteria.
+7. **Stop Game** at any time. The toy stops automatically when the round ends or the camera is stopped.
 
 ## Detected Emotions and IDs
+
 
 The application can detect the following facial expressions and sends a corresponding numeric ID:
 
