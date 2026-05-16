@@ -5638,6 +5638,9 @@ return a / b;`,Tne=`
                     <div class="form-row" style="margin-top:10px">
                         <label><input type="checkbox" id="show-raw-data"> Show Raw Detection Data</label>
                     </div>
+                    <div class="form-row">
+                        <label><input type="checkbox" id="enable-palm-pause"> Enable palm-pause detection (loads MediaPipe Hands &mdash; can lag slow PCs)</label>
+                    </div>
                     <div class="btn-row">
                         <button class="btn btn-cyan" id="start-btn" disabled>Start Camera</button>
                         <button class="btn btn-danger" id="stop-btn" disabled>Stop Camera</button>
@@ -5902,6 +5905,7 @@ const el = {
     cdnSelect:     $('cdn-select'),
     camSelect:     $('camera-select'),
     showRaw:       $('show-raw-data'),
+    enablePalm:    $('enable-palm-pause'),
     rawView:       $('raw-data-view'),
     rawContent:    $('raw-data-content'),
     startGameBtn:  $('start-game-btn'),
@@ -6343,10 +6347,16 @@ async function detectFace() {
     if (!state.isRunning || !el.video.srcObject) return;
     if (typeof faceapi === 'undefined') return;
     if (el.video.readyState < 3) return;
+    // Re-entrancy guard — if a previous detection is still running, skip this tick
+    // instead of queueing another async call (which would starve the event loop and
+    // make the score-tick / countdown UI feel like it's only updating every 5 s).
+    if (state.detecting) return;
+    state.detecting = true;
 
     // When palm-paused: suppress output, clear canvas
     if (state.palmPaused) {
         el.canvas.getContext('2d').clearRect(0, 0, el.canvas.width, el.canvas.height);
+        state.detecting = false;
         return;
     }
 
@@ -6519,6 +6529,7 @@ async function detectFace() {
             if (!state.gameActive) setIntensityOutput(0, { level: 0, emotion: 'no_face' });
         }
     } catch (e) { console.error('detectFace error:', e); }
+    finally { state.detecting = false; }
 }
 
 function flashHud(hudEl, glowColor, isCombo) {
@@ -7074,7 +7085,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     onWebhookTypeChange();
     el.playerNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmPlayerName(); });
     await loadFaceApiLibrary();
-    initPalmDetection(); // non-blocking, loads in background
+    // Palm-pause detection is heavy (MediaPipe Hands runs at ~30fps on the same video).
+    // It's now opt-in via the Settings checkbox so weak hardware isn't penalised by default.
+    el.enablePalm.addEventListener('change', () => {
+        if (el.enablePalm.checked && !state.mpReady) {
+            addLog('Loading palm-pause detection…');
+            initPalmDetection();
+        }
+    });
+    // Lightweight UI ticker — runs independently of detection so the timer countdown
+    // and live intensity number stay smooth even when the face-detection pipeline
+    // is briefly busy.
+    setInterval(() => {
+        if (state.gameActive) {
+            const remaining = Math.max(0, GAME_DURATION_SEC - (Date.now() - state.gameStartTime) / 1000);
+            const m = Math.floor(remaining / 60);
+            const s = Math.floor(remaining % 60);
+            el.timerDisplay.textContent = m + ':' + String(s).padStart(2, '0');
+        }
+        if (el.intensityDisplay) {
+            el.intensityDisplay.textContent = Math.round(state.currentIntensity) + '%';
+        }
+    }, 250);
 });
 </script>
 </body>
