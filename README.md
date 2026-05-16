@@ -31,6 +31,31 @@ It also includes a configurable "smile contest" round where intensity ramps up o
 6. **Start Game** → enter player name → the round runs for the configured duration. The score is the sum of *active seconds* across enabled criteria.
 7. **Stop Game** at any time. The toy stops automatically when the round ends or the camera is stopped.
 
+## Running locally
+
+For full functionality (especially **Bluetooth — Web Bluetooth requires a secure context**), don't open `index.html` with `file://`. Serve it over `http://localhost`:
+
+```powershell
+# any of these works — pick whichever is installed
+python -m http.server 8080
+# or
+npx --yes http-server -p 8080
+```
+
+Then visit <http://localhost:8080/>. Cloud / Local-webhook modes work from `file://` too, but Web Bluetooth (Motorbunny) and camera permissions are happier on `http://localhost`.
+
+## Per-branch GitHub Pages previews
+
+This repo ships `.github/workflows/pages-per-branch.yml`, which publishes every pushed branch into its own subfolder of a shared `gh-pages` branch. Once Pages is enabled (Settings → Pages → Source: **Deploy from a branch**, branch: **`gh-pages`**, folder: `/ (root)`), each branch is reachable at:
+
+```
+https://<owner>.github.io/<repo>/<branch>/
+```
+
+e.g. `https://taisensei.github.io/FaceExpressionXtoys/taisensei/`. The root of the Pages site shows an auto-generated index of every published branch.
+
+> The workflow needs `Settings → Actions → General → Workflow permissions = Read and write` so it can push to `gh-pages`.
+
 ## Detected Emotions and IDs
 
 

@@ -1,0 +1,103 @@
+name: Deploy branch preview to GitHub Pages
+
+# Publishes every pushed branch into its own subfolder on the `gh-pages`
+# branch, so each branch gets its own live preview URL:
+#   https://<owner>.github.io/<repo>/<branch>/
+#
+# The root of gh-pages also gets a small auto-generated index.html that
+# links to every published branch.
+
+on:
+  push:
+    branches:
+      - '**'           # all branches
+  workflow_dispatch:
+
+permissions:
+  contents: write      # needed to push to gh-pages
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.repository_owner != ''   # skip on forks where you haven't enabled it
+    steps:
+      - name: Checkout source branch
+        uses: actions/checkout@v4
+
+      - name: Determine branch name (slugified)
+        id: vars
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          SLUG=$(echo "$BRANCH" | tr '/' '-' | tr -cd 'A-Za-z0-9_.-')
+          echo "branch=$BRANCH"  >> "$GITHUB_OUTPUT"
+          echo "slug=$SLUG"      >> "$GITHUB_OUTPUT"
+
+      - name: Stage site for this branch
+        run: |
+          mkdir -p _site
+          # Copy everything except VCS / workflow noise
+          rsync -a --delete \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '_site' \
+            ./ _site/
+
+      - name: Deploy to gh-pages/<branch>/
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: ./_site
+          destination_dir: ${{ steps.vars.outputs.slug }}
+          keep_files: true        # don't wipe other branches' folders
+          commit_message: "deploy: ${{ steps.vars.outputs.branch }} @ ${{ github.sha }}"
+          user_name: 'github-actions[bot]'
+          user_email: '41898282+github-actions[bot]@users.noreply.github.com'
+
+  # ----------------------------------------------------------------
+  # Regenerate the root index.html on gh-pages that lists every branch.
+  # Runs after `deploy` so it sees the just-published folder.
+  # ----------------------------------------------------------------
+  index:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 1
+
+      - name: Build branch index
+        run: |
+          REPO="${{ github.event.repository.name }}"
+          OWNER="${{ github.repository_owner }}"
+          {
+            echo '<!doctype html><meta charset="utf-8">'
+            echo "<title>$REPO &mdash; branch previews</title>"
+            echo '<style>body{font:14px/1.5 system-ui,sans-serif;max-width:640px;margin:40px auto;padding:0 20px;color:#222}h1{font-size:1.4rem}a{color:#0366d6;text-decoration:none}a:hover{text-decoration:underline}li{margin:6px 0}code{background:#f1f3f5;padding:1px 6px;border-radius:4px}</style>'
+            echo "<h1>$REPO &mdash; branch previews</h1>"
+            echo "<p>Each pushed branch is published to its own subfolder by <code>.github/workflows/pages-per-branch.yml</code>.</p>"
+            echo '<ul>'
+            for d in */ ; do
+              name="${d%/}"
+              [ -f "$d/index.html" ] || continue
+              echo "<li><a href=\"./$name/\">$name</a></li>"
+            done
+            echo '</ul>'
+            echo "<hr><p style=\"color:#888;font-size:12px\">Generated $(date -u +%FT%TZ) &middot; <a href=\"https://github.com/$OWNER/$REPO\">repository</a></p>"
+          } > index.html
+
+      - name: Commit & push updated index
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "deploy: refresh branch index"
+            git push
+          fi
