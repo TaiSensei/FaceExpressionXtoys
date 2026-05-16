@@ -5352,7 +5352,7 @@ return a / b;`,Tne=`
 <!-- HEADER -->
 <div class="header">
     <h1>&#9889; Face Expression Contest</h1>
-    <span class="header-badge">XToys Cloud Edition</span>
+    <span class="header-badge">XToys + Motorbunny BLE Edition (taisensei)</span>
 </div>
 
 <!-- GAME OVER MODAL -->
@@ -5475,7 +5475,7 @@ return a / b;`,Tne=`
                             <tr><td style="padding:5px 6px">&#9889; Combo</td><td style="padding:5px 6px">All five criteria active simultaneously; tracked as a separate counter</td></tr>
                         </tbody>
                     </table>
-                    <p style="margin-top:10px;color:var(--muted)"><strong style="color:var(--text)">Score formula:</strong> each criterion accumulates <em>active seconds</em> independently. Final score = sum of active seconds across all five criteria. Maximum possible = 900 s &times; 5 = 4 500 pts per 3-minute round. Combo seconds are counted on top of individual criteria.</p>
+                    <p style="margin-top:10px;color:var(--muted)"><strong style="color:var(--text)">Score formula:</strong> each criterion accumulates <em>active seconds</em> independently. Final score = sum of active seconds across all five criteria. Maximum possible = duration (s) &times; 5 (e.g. 180&nbsp;&times;&nbsp;5 = 900 pts for a 3-minute round). Combo seconds are counted on top of individual criteria.</p>
                 </div>
             </details>
         </div>
@@ -5548,6 +5548,8 @@ return a / b;`,Tne=`
                         <select id="webhook-type" onchange="onWebhookTypeChange()">
                             <option value="cloud" selected>&#9729; Cloud (XToys)</option>
                             <option value="local">&#128421; Local Server</option>
+                            <option value="bluetooth">&#128268; Bluetooth (Motorbunny direct)</option>
+                            <option value="both">&#9729;+&#128268; XToys + Bluetooth</option>
                         </select>
                     </div>
                     <div class="form-row" id="row-cloud-key">
@@ -5557,6 +5559,15 @@ return a / b;`,Tne=`
                     <div class="form-row hidden" id="row-local-url">
                         <label>Local Webhook URL</label>
                         <input type="text" id="local-url" value="http://localhost:3000/webhook" placeholder="http://localhost:3000/webhook">
+                    </div>
+                    <div class="form-row hidden" id="row-bluetooth">
+                        <label>Motorbunny Bluetooth</label>
+                        <div style="display:flex;gap:8px;align-items:center">
+                            <button class="btn btn-cyan" id="bt-connect-btn" style="flex:0 0 auto">&#128268; Connect</button>
+                            <button class="btn btn-danger" id="bt-disconnect-btn" style="flex:0 0 auto" disabled>Disconnect</button>
+                            <span id="bt-status" style="font-size:0.78rem;color:var(--muted)">Not connected</span>
+                        </div>
+                        <small style="color:var(--muted);font-size:0.7rem;display:block;margin-top:4px">Requires Chrome/Edge with Web Bluetooth. Pair the Motorbunny Classic first (advertised name: <code>MB Controller</code>).</small>
                     </div>
                     <div class="form-row">
                         <label>Camera</label>
@@ -5594,7 +5605,37 @@ return a / b;`,Tne=`
                             <input type="number" id="eye-open-threshold" value="0.2" min="0.1" max="0.5" step="0.01">
                         </div>
                     </div>
-                    <div class="form-row">
+
+                    <div class="panel-title" style="margin-top:14px;font-size:0.72rem">Round &amp; Intensity</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                        <div class="form-row">
+                            <label>Round Duration (sec)</label>
+                            <input type="number" id="round-duration" value="180" min="30" max="1800" step="10">
+                        </div>
+                        <div class="form-row">
+                            <label>Start Intensity (%)</label>
+                            <input type="number" id="round-start-intensity" value="3" min="0" max="100">
+                        </div>
+                        <div class="form-row">
+                            <label>End Intensity (%)</label>
+                            <input type="number" id="round-end-intensity" value="100" min="0" max="100">
+                        </div>
+                        <div class="form-row">
+                            <label>Smile-break decay (% / sec)</label>
+                            <input type="number" id="smile-break-decay" value="1" min="0" max="100" step="0.5">
+                        </div>
+                    </div>
+
+                    <div class="panel-title" style="margin-top:14px;font-size:0.72rem">Score these criteria</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:0.85rem">
+                        <label><input type="checkbox" id="enable-eyes"   checked> &#128065;&#65039; Eyes Open</label>
+                        <label><input type="checkbox" id="enable-smile"  checked> &#128522; Smile</label>
+                        <label><input type="checkbox" id="enable-brows"  checked> &#129320; Brows Raised</label>
+                        <label><input type="checkbox" id="enable-gaze"   checked> &#127917; Expression Lock</label>
+                        <label><input type="checkbox" id="enable-stable" checked> &#128208; Head Still</label>
+                    </div>
+
+                    <div class="form-row" style="margin-top:10px">
                         <label><input type="checkbox" id="show-raw-data"> Show Raw Detection Data</label>
                     </div>
                     <div class="btn-row">
@@ -5683,6 +5724,15 @@ return a / b;`,Tne=`
                     <button class="btn btn-secondary" id="lock-expr-btn" style="flex:none">&#127917; Lock Expression</button>
                     <span id="lock-status" style="font-size:0.78rem;color:var(--muted)">Not set &mdash; face camera &amp; press</span>
                 </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <button class="btn btn-secondary" id="baseline-btn" style="flex:none">&#129504; Capture Neutral Baseline</button>
+                    <span id="baseline-status" style="font-size:0.78rem;color:var(--muted)">No baseline &mdash; thresholds use defaults</span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;font-size:0.78rem;color:var(--muted)">
+                    <span>Live intensity:</span>
+                    <strong id="intensity-display" style="color:var(--text)">0%</strong>
+                    <span id="smile-break-indicator" style="margin-left:auto;color:var(--accent);display:none">⚠️ smile broken &mdash; decaying</span>
+                </div>
             </div>
         </div>
 
@@ -5716,10 +5766,20 @@ return a / b;`,Tne=`
 // ============================================================
 //  CONFIG
 // ============================================================
-const GAME_DURATION_SEC = 180;   // 3-minute max
+let   GAME_DURATION_SEC = 180;   // 3-minute default (overridden by Settings > Round Duration)
 const DETECTION_MS      = 100;   // face detection tick
 const SCORE_TICK_MS     = 500;   // scoring interval
-const MAX_SCORE_SEC = GAME_DURATION_SEC * 5; // max possible total active-seconds (all 5 criteria full game)
+let   MAX_SCORE_SEC     = GAME_DURATION_SEC * 5; // recomputed on round start
+
+// Round intensity ramp & smile-break decay defaults (overridden by Settings inputs)
+let   ROUND_START_INTENSITY     = 3;   // % at t=0
+let   ROUND_END_INTENSITY       = 100; // % at t=duration
+let   SMILE_BREAK_DECAY_PER_SEC = 1;   // % per second lost while smile is broken
+
+// Motorbunny Classic BLE (reverse-engineered protocol)
+const MB_SERVICE_UUID = '0000fff0-0000-1000-8000-00805f9b34fb';
+const MB_WRITE_UUID   = '0000fff6-0000-1000-8000-00805f9b34fb';
+const MB_DEVICE_NAME  = 'MB Controller';
 
 // Points awarded per 500ms tick per criterion
 // Points per tick replaced by time tracking — see scoreTick()
@@ -5785,6 +5845,17 @@ const state = {
     playerName: '',
     // expression lock
     exprLock: null,
+    // per-criterion enable flags (live-mirrored from settings checkboxes)
+    enabled: { eyes:true, smile:true, brows:true, gaze:true, stable:true },
+    // neutral-face baseline (captured via Capture Neutral Baseline)
+    baseline: null,
+    // round intensity tracking
+    currentIntensity: 0,    // last commanded intensity (0..100)
+    targetIntensity: 0,     // ramp target from elapsed time
+    smileBrokenSince: 0,    // ms timestamp when smile criterion last went false
+    lastIntensityTick: 0,   // ms timestamp of last setIntensityOutput call (for decay timing)
+    // bluetooth (Motorbunny)
+    bt: { device:null, server:null, characteristic:null, connected:false },
 };
 
 // ============================================================
@@ -5799,10 +5870,31 @@ const el = {
     stopBtn:       $('stop-btn'),
     testBtn:       $('test-btn'),
     reloadLibBtn:  $('reload-lib-btn'),
+    apiKey:        $('api-key'),
     localUrl:      $('local-url'),
     webhookType:   $('webhook-type'),
     rowCloudKey:   $('row-cloud-key'),
     rowLocalUrl:   $('row-local-url'),
+    rowBluetooth:  $('row-bluetooth'),
+    btConnectBtn:    $('bt-connect-btn'),
+    btDisconnectBtn: $('bt-disconnect-btn'),
+    btStatus:        $('bt-status'),
+    // round / intensity settings
+    roundDuration:   $('round-duration'),
+    roundStartInt:   $('round-start-intensity'),
+    roundEndInt:     $('round-end-intensity'),
+    smileBreakDecay: $('smile-break-decay'),
+    // per-criterion enable
+    enEyes:   $('enable-eyes'),
+    enSmile:  $('enable-smile'),
+    enBrows:  $('enable-brows'),
+    enGaze:   $('enable-gaze'),
+    enStable: $('enable-stable'),
+    // baseline + intensity HUD
+    baselineBtn:    $('baseline-btn'),
+    baselineStatus: $('baseline-status'),
+    intensityDisplay:    $('intensity-display'),
+    smileBreakIndicator: $('smile-break-indicator'),
     analysisInt:   $('analysis-interval'),
     smoothBuf:     $('smoothing-buffer-size'),
     minFrames:     $('min-stable-frames'),
@@ -6006,7 +6098,7 @@ function stopCamera() {
     el.startGameBtn.disabled = !state.isLibLoaded;
     showStatus('Camera stopped.', 'info');
     addLog('Camera stopped.');
-    sendXtoys({ intensity: 0, status: 'stopped' });
+    setIntensityOutput(0, { status: 'stopped' });
 }
 
 function syncCanvas() {
@@ -6097,6 +6189,87 @@ function checkBrowsRaised(landmarks) {
 function getNoseTip(landmarks) {
     const p = landmarks.positions[30];
     return { x: p.x, y: p.y };
+}
+
+/**
+ * Capture a neutral-face baseline from the current frame's landmarks/expressions.
+ * Stored values are used to make smile/brow detection adaptive per-user instead
+ * of relying purely on fixed thresholds.
+ */
+function captureBaseline() {
+    if (!state.isRunning) { addLog('Start camera first to capture baseline.', 'warn'); return; }
+    if (el.baselineBtn.disabled) return;
+    el.baselineBtn.disabled = true;
+    el.baselineStatus.style.color = 'var(--muted)';
+    el.baselineStatus.textContent = 'Hold a neutral face…';
+
+    const cdEl = document.getElementById('countdown-num');
+    let count = 3;
+    function showNum(val, cls, cb) {
+        cdEl.textContent = val;
+        cdEl.className = cls;
+        void cdEl.offsetWidth;
+        cdEl.className = cls;
+        setTimeout(cb, 950);
+    }
+    async function snapshot() {
+        try {
+            const dets = await faceapi
+                .detectAllFaces(el.video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 }))
+                .withFaceLandmarks()
+                .withFaceExpressions();
+            if (!dets || dets.length === 0) throw new Error('No face detected');
+            const f   = dets[0];
+            const lm  = f.landmarks;
+            const pts = lm.positions;
+            const lEyeTopY = (pts[37].y + pts[38].y) / 2;
+            const lEyeBotY = (pts[40].y + pts[41].y) / 2;
+            const rEyeTopY = (pts[43].y + pts[44].y) / 2;
+            const rEyeBotY = (pts[46].y + pts[47].y) / 2;
+            const lEyeH = Math.max(lEyeBotY - lEyeTopY, 1);
+            const rEyeH = Math.max(rEyeBotY - rEyeTopY, 1);
+            const lBrowRaise = (lEyeTopY - pts[19].y) / lEyeH;
+            const rBrowRaise = (rEyeTopY - pts[24].y) / rEyeH;
+            // mouth width / face-width ratio: scale-invariant smile metric
+            const mouthW = Math.hypot(pts[54].x - pts[48].x, pts[54].y - pts[48].y);
+            const faceW  = Math.hypot(pts[16].x - pts[0].x,  pts[16].y - pts[0].y) || 1;
+            const mouthRatio = mouthW / faceW;
+            const lEAR = getEAR(lm.getLeftEye());
+            const rEAR = getEAR(lm.getRightEye());
+            state.baseline = {
+                browRaise: (lBrowRaise + rBrowRaise) / 2,
+                mouthRatio,
+                ear: (lEAR + rEAR) / 2,
+                happyConfidence: f.expressions.happy || 0,
+                capturedAt: Date.now()
+            };
+            el.baselineStatus.textContent = '✅ baseline set (brow ' + state.baseline.browRaise.toFixed(2) +
+                ', mouth ' + state.baseline.mouthRatio.toFixed(3) + ')';
+            el.baselineStatus.style.color = 'var(--green)';
+            addLog('Neutral baseline captured.', 'success');
+        } catch (e) {
+            el.baselineStatus.textContent = 'Failed: ' + e.message;
+            el.baselineStatus.style.color = 'var(--muted)';
+            addLog('Baseline capture failed: ' + e.message, 'warn');
+        } finally {
+            el.baselineBtn.disabled = false;
+            cdEl.className = '';
+        }
+    }
+    function tick() {
+        if (count > 0) {
+            showNum(count, 'pop', () => { count--; tick(); });
+        } else {
+            showNum('😐', 'go', snapshot);
+        }
+    }
+    tick();
+}
+
+function clearBaseline() {
+    state.baseline = null;
+    el.baselineStatus.textContent = 'No baseline — thresholds use defaults';
+    el.baselineStatus.style.color = 'var(--muted)';
 }
 
 // ============================================================
@@ -6224,8 +6397,35 @@ async function detectFace() {
             const avgEAR  = (lEAR + rEAR) / 2;
             const eyesOpen = avgEAR > eyeThresh;
 
-            const isSmiling = state.stableExpr === 'happy' || (expressions.happy || 0) > 0.38;
-            const browsOk   = checkBrowsRaised(landmarks);
+            // Smile: baseline-aware mouth-width ratio + classifier confidence
+            let isSmiling;
+            if (state.baseline) {
+                const pts = landmarks.positions;
+                const mouthW = Math.hypot(pts[54].x - pts[48].x, pts[54].y - pts[48].y);
+                const faceW  = Math.hypot(pts[16].x - pts[0].x,  pts[16].y - pts[0].y) || 1;
+                const mouthRatio = mouthW / faceW;
+                const happyBoost = (expressions.happy || 0) > Math.max(0.25, state.baseline.happyConfidence + 0.15);
+                isSmiling = mouthRatio > state.baseline.mouthRatio * 1.08 || happyBoost || state.stableExpr === 'happy';
+            } else {
+                isSmiling = state.stableExpr === 'happy' || (expressions.happy || 0) > 0.38;
+            }
+
+            // Brows raised: baseline-aware if available
+            let browsOk;
+            if (state.baseline) {
+                const pts = landmarks.positions;
+                const lEyeTopY = (pts[37].y + pts[38].y) / 2;
+                const lEyeBotY = (pts[40].y + pts[41].y) / 2;
+                const rEyeTopY = (pts[43].y + pts[44].y) / 2;
+                const rEyeBotY = (pts[46].y + pts[47].y) / 2;
+                const lEyeH = Math.max(lEyeBotY - lEyeTopY, 1);
+                const rEyeH = Math.max(rEyeBotY - rEyeTopY, 1);
+                const avgRaise = ((lEyeTopY - pts[19].y) / lEyeH + (rEyeTopY - pts[24].y) / rEyeH) / 2;
+                browsOk = avgRaise > state.baseline.browRaise + 0.35;
+            } else {
+                browsOk = checkBrowsRaised(landmarks);
+            }
+
             const gazeOk    = state.exprLock
                 ? (state.stableExpr === state.exprLock || (expressions[state.exprLock] || 0) > 0.22)
                 : false;
@@ -6249,7 +6449,15 @@ async function detectFace() {
             state.lastNose     = nose;
             state.headIsStable = headStable;
 
-            state.criteria = { eyes: eyesOpen, smile: isSmiling, brows: browsOk, gaze: gazeOk, stable: headStable };
+            // Apply per-criterion enable flags (Settings checkboxes)
+            const en = state.enabled;
+            state.criteria = {
+                eyes:   en.eyes   && eyesOpen,
+                smile:  en.smile  && isSmiling,
+                brows:  en.brows  && browsOk,
+                gaze:   en.gaze   && gazeOk,
+                stable: en.stable && headStable
+            };
 
             // ── Live UI ─────────────────────────────────────────
             el.emotionText.textContent  = state.stableExpr;
@@ -6308,7 +6516,7 @@ async function detectFace() {
             [el.hudEyes,el.hudSmile,el.hudBrows,el.hudGaze,el.hudStable].forEach(e => e.classList.remove('active'));
             el.levelBadge.textContent = '\u2014';
             el.levelBadge.className   = 'level-badge';
-            sendXtoys({ level: 0, intensity: 0, emotion: 'no_face' });
+            if (!state.gameActive) setIntensityOutput(0, { level: 0, emotion: 'no_face' });
         }
     } catch (e) { console.error('detectFace error:', e); }
 }
@@ -6380,6 +6588,20 @@ function setCard(card, active) { card.classList.toggle('active', !!active); }
 // ============================================================
 function startGame() {
     if (!state.isRunning) { showStatus('Start camera first!', 'err'); return; }
+    // Pull live settings
+    GAME_DURATION_SEC       = Math.max(10, parseInt(el.roundDuration.value)   || 180);
+    ROUND_START_INTENSITY   = Math.max(0,  parseInt(el.roundStartInt.value)   || 0);
+    ROUND_END_INTENSITY     = Math.max(0,  parseInt(el.roundEndInt.value)     || 100);
+    SMILE_BREAK_DECAY_PER_SEC = Math.max(0, parseFloat(el.smileBreakDecay.value) || 0);
+    MAX_SCORE_SEC           = GAME_DURATION_SEC * 5;
+    state.enabled = {
+        eyes:   el.enEyes.checked,
+        smile:  el.enSmile.checked,
+        brows:  el.enBrows.checked,
+        gaze:   el.enGaze.checked,
+        stable: el.enStable.checked
+    };
+
     state.gameActive    = true;
     state.palmPaused    = false;
     state.gameStartTime = Date.now();
@@ -6388,13 +6610,21 @@ function startGame() {
     state.bd            = { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 };
     state.critTime      = { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 };
     state.prevCriteria  = { eyes:false, smile:false, brows:false, gaze:false, stable:false };
+    state.currentIntensity = ROUND_START_INTENSITY;
+    state.targetIntensity  = ROUND_START_INTENSITY;
+    state.smileBrokenSince = 0;
+    state.lastIntensityTick = Date.now();
+    if (el.smileBreakIndicator) el.smileBreakIndicator.style.display = 'none';
 
     el.startGameBtn.disabled = true;
     el.stopGameBtn.disabled  = false;
     el.resetGameBtn.disabled = false;
     updateScoreUI();
-    showStatus('Game in progress… smile! 😊', 'ok');
-    addLog('Game started!', 'success');
+    showStatus('Round in progress — hold the smile! 😊', 'ok');
+    addLog('Round started: ' + GAME_DURATION_SEC + 's, ramp ' + ROUND_START_INTENSITY + '%→' + ROUND_END_INTENSITY + '%, decay ' + SMILE_BREAK_DECAY_PER_SEC + '%/s.', 'success');
+
+    // Prime output at start intensity
+    setIntensityOutput(ROUND_START_INTENSITY, { level: 0, emotion: 'round_start', round: 1 });
 
     state.scoreLoop = setInterval(scoreTick, SCORE_TICK_MS);
 }
@@ -6421,6 +6651,46 @@ function scoreTick() {
         state.critTime.combo += tick;
     }
 
+    // ─── Round intensity ramp + smile-break decay ──────────────
+    // Target intensity ramps linearly from ROUND_START_INTENSITY → ROUND_END_INTENSITY
+    // across the configured round duration.
+    const t01 = Math.min(1, state.gameElapsed / GAME_DURATION_SEC);
+    state.targetIntensity = ROUND_START_INTENSITY + (ROUND_END_INTENSITY - ROUND_START_INTENSITY) * t01;
+
+    const now = Date.now();
+    const dt  = Math.max(0, (now - state.lastIntensityTick) / 1000);
+    state.lastIntensityTick = now;
+
+    // Smile-break: when the smile criterion is being scored but is currently false,
+    // bleed intensity at SMILE_BREAK_DECAY_PER_SEC. Otherwise climb toward target.
+    const smileBroken = state.enabled.smile && !c.smile;
+    if (smileBroken) {
+        if (!state.smileBrokenSince) state.smileBrokenSince = now;
+        state.currentIntensity = Math.max(0, state.currentIntensity - SMILE_BREAK_DECAY_PER_SEC * dt);
+        if (el.smileBreakIndicator) el.smileBreakIndicator.style.display = '';
+    } else {
+        state.smileBrokenSince = 0;
+        // Move smoothly toward target (cap rise rate to roughly the ramp slope so a
+        // user who has decayed below baseline still recovers gradually).
+        const slopePerSec = Math.max(1, (ROUND_END_INTENSITY - ROUND_START_INTENSITY) / Math.max(1, GAME_DURATION_SEC));
+        const recoverRate = Math.max(slopePerSec * 4, 3); // %/s recovery cap
+        if (state.currentIntensity < state.targetIntensity) {
+            state.currentIntensity = Math.min(state.targetIntensity, state.currentIntensity + recoverRate * dt);
+        } else {
+            state.currentIntensity = state.targetIntensity;
+        }
+        if (el.smileBreakIndicator) el.smileBreakIndicator.style.display = 'none';
+    }
+
+    const params = Object.assign({}, state.lastDetectionParams || {}, {
+        intensity:        Math.round(state.currentIntensity),
+        target_intensity: Math.round(state.targetIntensity),
+        round_elapsed:    Math.round(state.gameElapsed),
+        round_duration:   GAME_DURATION_SEC,
+        smile_broken:     smileBroken ? 1 : 0
+    });
+    setIntensityOutput(state.currentIntensity, params);
+
     updateScoreUI();
     refreshCritCards();
 }
@@ -6428,6 +6698,9 @@ function scoreTick() {
 function stopGame(timeUp) {
     state.gameActive = false;
     clearInterval(state.scoreLoop); state.scoreLoop = null;
+    // Stop the toy at end of round
+    setIntensityOutput(0, { level: 0, emotion: timeUp ? 'round_complete' : 'stopped' });
+    if (el.smileBreakIndicator) el.smileBreakIndicator.style.display = 'none';
     el.startGameBtn.disabled = !state.isRunning;
     el.stopGameBtn.disabled  = true;
     if (timeUp) {
@@ -6519,20 +6792,129 @@ function closeModal() {
 //  XTOYS
 // ============================================================
 function onWebhookTypeChange() {
-    const isLocal = el.webhookType.value === 'local';
-    el.rowCloudKey.classList.toggle('hidden', isLocal);
-    el.rowLocalUrl.classList.toggle('hidden', !isLocal);
+    const v = el.webhookType.value;
+    // Cloud webhook ID input: needed for 'cloud' and 'both'
+    el.rowCloudKey.classList.toggle('hidden', v !== 'cloud' && v !== 'both');
+    // Local URL input: only 'local'
+    el.rowLocalUrl.classList.toggle('hidden', v !== 'local');
+    // Bluetooth row: 'bluetooth' and 'both'
+    el.rowBluetooth.classList.toggle('hidden', v !== 'bluetooth' && v !== 'both');
+}
+
+// ============================================================
+//  MOTORBUNNY BLE — Web Bluetooth direct control
+// ============================================================
+// Classic Motorbunny vibrate packet (17 bytes):
+//   [0xff][s0 s0][s1 s1][s2 s2][s3 s3][s4 s4][s5 s5][s6 s6][crc][0xec]
+// where each speed pair is the same 0x00..0xff value (constant) and
+// crc = (sum of bytes 0..14) & 0xff.
+// Stop packet (6 bytes): [0xf0 0x00 0x00 0x00 0x00 0xec].
+const motorbunny = {
+    async connect() {
+        if (!navigator.bluetooth) {
+            addLog('Web Bluetooth not supported in this browser. Use Chrome or Edge.', 'error');
+            showStatus('Web Bluetooth unavailable', 'err');
+            return false;
+        }
+        try {
+            addLog('Requesting Motorbunny device…');
+            const device = await navigator.bluetooth.requestDevice({
+                filters: [{ namePrefix: 'MB' }, { name: MB_DEVICE_NAME }],
+                optionalServices: [MB_SERVICE_UUID]
+            });
+            device.addEventListener('gattserverdisconnected', motorbunny._onDisconnected);
+            const server = await device.gatt.connect();
+            const service = await server.getPrimaryService(MB_SERVICE_UUID);
+            const characteristic = await service.getCharacteristic(MB_WRITE_UUID);
+            state.bt = { device, server, characteristic, connected: true };
+            el.btStatus.textContent = 'Connected: ' + (device.name || 'Motorbunny');
+            el.btStatus.style.color = 'var(--green)';
+            el.btConnectBtn.disabled = true;
+            el.btDisconnectBtn.disabled = false;
+            addLog('Motorbunny connected via BLE.', 'success');
+            return true;
+        } catch (e) {
+            addLog('BLE connect failed: ' + e.message, 'error');
+            el.btStatus.textContent = 'Connect failed';
+            el.btStatus.style.color = 'var(--red, #ef4444)';
+            return false;
+        }
+    },
+    async disconnect() {
+        try { await motorbunny.stop(); } catch (_) {}
+        try {
+            if (state.bt.device && state.bt.device.gatt.connected) state.bt.device.gatt.disconnect();
+        } catch (_) {}
+        motorbunny._onDisconnected();
+    },
+    _onDisconnected() {
+        state.bt = { device:null, server:null, characteristic:null, connected:false };
+        el.btStatus.textContent = 'Not connected';
+        el.btStatus.style.color = 'var(--muted)';
+        el.btConnectBtn.disabled = false;
+        el.btDisconnectBtn.disabled = true;
+        addLog('Motorbunny disconnected.');
+    },
+    /** Set constant vibration. level: 0..100. */
+    async setVibration(level) {
+        if (!state.bt.connected || !state.bt.characteristic) return;
+        const pct = Math.max(0, Math.min(100, level | 0));
+        if (pct === 0) return motorbunny.stop();
+        const speed = Math.round((pct / 100) * 0xff); // 0..255
+        const pkt = new Uint8Array(17);
+        pkt[0] = 0xff;
+        for (let i = 0; i < 7; i++) {
+            pkt[1 + i * 2]     = speed;
+            pkt[1 + i * 2 + 1] = speed;
+        }
+        let crc = 0;
+        for (let i = 0; i < 15; i++) crc = (crc + pkt[i]) & 0xff;
+        pkt[15] = crc;
+        pkt[16] = 0xec;
+        try { await state.bt.characteristic.writeValue(pkt); }
+        catch (e) { addLog('BLE write failed: ' + e.message, 'error'); }
+    },
+    async stop() {
+        if (!state.bt.connected || !state.bt.characteristic) return;
+        const pkt = new Uint8Array([0xf0, 0x00, 0x00, 0x00, 0x00, 0xec]);
+        try { await state.bt.characteristic.writeValue(pkt); }
+        catch (e) { /* ignore stop errors */ }
+    }
+};
+
+// ============================================================
+//  INTENSITY OUTPUT ROUTER
+// ============================================================
+// Single dispatch point. Sends `intensity` (0..100) + companion params
+// to whichever transport(s) the user selected. Used by both detection
+// loop snapshots and the round-intensity tick.
+async function setIntensityOutput(intensity, extraParams) {
+    intensity = Math.max(0, Math.min(100, Math.round(intensity)));
+    state.currentIntensity = intensity;
+    if (el.intensityDisplay) el.intensityDisplay.textContent = intensity + '%';
+    const params = Object.assign({ intensity }, extraParams || {});
+    const mode = el.webhookType.value;
+    if (mode === 'bluetooth' || mode === 'both') {
+        // Fire-and-forget BLE write; never awaited so a slow GATT write can’t starve the loop.
+        motorbunny.setVibration(state.palmPaused ? 0 : intensity);
+    }
+    if (mode === 'cloud' || mode === 'local' || mode === 'both') {
+        sendXtoys(params);
+    }
 }
 async function sendXtoys(params) {
     state.lastSentParams = Object.assign({}, params);
     state.lastSentTime   = Date.now();
+    const mode = el.webhookType.value;
+    // Bluetooth-only mode: nothing to POST.
+    if (mode === 'bluetooth') return;
     const qs = Object.entries(params).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
     let url;
-    if (el.webhookType.value === 'local') {
+    if (mode === 'local') {
         const base = (el.localUrl.value.trim() || 'http://localhost:3000/webhook').replace(/\/$/, '');
         url = base + '?' + qs;
     } else {
-        const key = el.apiKey.value.trim();
+        const key = el.apiKey && el.apiKey.value.trim();
         if (!key) return;
         url = XTOYS_BASE + key + '?action=GetData&' + qs;
     }
@@ -6657,6 +7039,21 @@ el.startGameBtn.addEventListener('click', showNameModal);
 el.stopGameBtn.addEventListener('click', () => stopGame(false));
 el.resetGameBtn.addEventListener('click', resetGame);
 el.lockBtn.addEventListener('click', captureExprLock);
+el.baselineBtn.addEventListener('click', captureBaseline);
+el.btConnectBtn.addEventListener('click', () => motorbunny.connect());
+el.btDisconnectBtn.addEventListener('click', () => motorbunny.disconnect());
+// Live-mirror checkbox state so toggling mid-round takes effect immediately
+['enEyes','enSmile','enBrows','enGaze','enStable'].forEach(k => {
+    el[k].addEventListener('change', () => {
+        state.enabled = {
+            eyes:   el.enEyes.checked,
+            smile:  el.enSmile.checked,
+            brows:  el.enBrows.checked,
+            gaze:   el.enGaze.checked,
+            stable: el.enStable.checked
+        };
+    });
+});
 el.showRaw.addEventListener('change', function () {
     el.rawView.classList.toggle('hidden', !this.checked);
 });
@@ -6674,6 +7071,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateScoreUI();
     refreshCritCards();
     renderLeaderboard();
+    onWebhookTypeChange();
     el.playerNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmPlayerName(); });
     await loadFaceApiLibrary();
     initPalmDetection(); // non-blocking, loads in background
