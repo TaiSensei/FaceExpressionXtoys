@@ -5480,60 +5480,7 @@ return a / b;`,Tne=`
             </details>
         </div>
 
-        <!-- Scoring Criteria -->
-        <div class="panel">
-            <div class="panel-title">Scoring Criteria (live)</div>
-            <div class="criteria-grid">
-                <div class="criteria-card" id="crit-eyes">
-                    <div class="criteria-icon">&#128065;&#65039;</div>
-                    <div class="criteria-info">
-                        <div class="criteria-name">Eyes Open</div>
-                        <div class="criteria-pts" id="pts-eyes">0 <span>pts</span></div>
-                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-eyes"></div></div>
-                    </div>
-                </div>
-                <div class="criteria-card" id="crit-smile">
-                    <div class="criteria-icon">&#128522;</div>
-                    <div class="criteria-info">
-                        <div class="criteria-name">Smile</div>
-                        <div class="criteria-pts" id="pts-smile">0 <span>pts</span></div>
-                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-smile"></div></div>
-                    </div>
-                </div>
-                <div class="criteria-card" id="crit-brows">
-                    <div class="criteria-icon">&#129320;</div>
-                    <div class="criteria-info">
-                        <div class="criteria-name">Brows Raised</div>
-                        <div class="criteria-pts" id="pts-brows">0 <span>pts</span></div>
-                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-brows"></div></div>
-                    </div>
-                </div>
-                <div class="criteria-card" id="crit-gaze">
-                    <div class="criteria-icon">&#127917;</div>
-                    <div class="criteria-info">
-                        <div class="criteria-name">Expression Lock</div>
-                        <div class="criteria-pts" id="pts-gaze">0 <span>pts</span></div>
-                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-gaze"></div></div>
-                    </div>
-                </div>
-                <div class="criteria-card" id="crit-stable">
-                    <div class="criteria-icon">&#128208;</div>
-                    <div class="criteria-info">
-                        <div class="criteria-name">Head Still</div>
-                        <div class="criteria-pts" id="pts-stable">0 <span>pts</span></div>
-                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-stable"></div></div>
-                    </div>
-                </div>
-                <div class="criteria-card" id="crit-combo">
-                    <div class="criteria-icon">&#9889;</div>
-                    <div class="criteria-info">
-                        <div class="criteria-name">Combo Bonus</div>
-                        <div class="criteria-pts" id="pts-combo">0 <span>pts</span></div>
-                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-combo"></div></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Scoring Criteria panel moved to the right column, under Score -->
 
         <!-- Settings Accordion -->
         <div class="panel">
@@ -5709,6 +5656,61 @@ return a / b;`,Tne=`
                         <div class="timer-seg" data-tseg="7"></div>
                         <div class="timer-seg" data-tseg="8"></div>
                         <div class="timer-seg" data-tseg="9"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scoring Criteria (live) — directly under the Score so live progress bars are visible in real time -->
+        <div class="panel">
+            <div class="panel-title">Scoring Criteria (live)</div>
+            <div class="criteria-grid">
+                <div class="criteria-card" id="crit-eyes">
+                    <div class="criteria-icon">&#128065;&#65039;</div>
+                    <div class="criteria-info">
+                        <div class="criteria-name">Eyes Open</div>
+                        <div class="criteria-pts" id="pts-eyes">0 <span>pts</span></div>
+                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-eyes"></div></div>
+                    </div>
+                </div>
+                <div class="criteria-card" id="crit-smile">
+                    <div class="criteria-icon">&#128522;</div>
+                    <div class="criteria-info">
+                        <div class="criteria-name">Smile</div>
+                        <div class="criteria-pts" id="pts-smile">0 <span>pts</span></div>
+                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-smile"></div></div>
+                    </div>
+                </div>
+                <div class="criteria-card" id="crit-brows">
+                    <div class="criteria-icon">&#129320;</div>
+                    <div class="criteria-info">
+                        <div class="criteria-name">Brows Raised</div>
+                        <div class="criteria-pts" id="pts-brows">0 <span>pts</span></div>
+                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-brows"></div></div>
+                    </div>
+                </div>
+                <div class="criteria-card" id="crit-gaze">
+                    <div class="criteria-icon">&#127917;</div>
+                    <div class="criteria-info">
+                        <div class="criteria-name">Expression Lock</div>
+                        <div class="criteria-pts" id="pts-gaze">0 <span>pts</span></div>
+                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-gaze"></div></div>
+                    </div>
+                </div>
+                <div class="criteria-card" id="crit-stable">
+                    <div class="criteria-icon">&#128208;</div>
+                    <div class="criteria-info">
+                        <div class="criteria-name">Head Still</div>
+                        <div class="criteria-pts" id="pts-stable">0 <span>pts</span></div>
+                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-stable"></div></div>
+                    </div>
+                </div>
+                <div class="criteria-card" id="crit-combo">
+                    <div class="criteria-icon">&#9889;</div>
+                    <div class="criteria-info">
+                        <div class="criteria-name">Combo Bonus</div>
+                        <div class="criteria-pts" id="pts-combo">0 <span>pts</span></div>
+                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-combo"></div></div>
                     </div>
                 </div>
             </div>
