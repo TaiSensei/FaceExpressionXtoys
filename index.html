@@ -6073,6 +6073,8 @@ async function startCamera() {
         el.video.srcObject = state.stream;
         await new Promise(r => { el.video.onloadedmetadata = r; });
         syncCanvas();
+        // Keep canvas in sync if the layout changes, but not every frame.
+        window.addEventListener('resize', syncCanvas);
         state.isRunning = true;
         el.startBtn.disabled = true;
         el.stopBtn.disabled  = false;
@@ -6362,7 +6364,9 @@ async function detectFace() {
         return;
     }
 
-    syncCanvas();
+    // NOTE: syncCanvas() is no longer called every tick. It's invoked once when
+    // the video has loaded its metadata (see startCamera) and on window resize.
+    // Resizing the canvas every frame was forcing a full repaint 10x/sec.
 
     try {
         const dets = await faceapi
@@ -6915,12 +6919,18 @@ async function setIntensityOutput(intensity, extraParams) {
         sendXtoys(params);
     }
 }
+// Network-rate cap so detection-tick (10/sec) and score-tick (2/sec) callers
+// can't saturate the browser's connection pool to a slow webhook endpoint.
+const WEBHOOK_MIN_INTERVAL_MS = 250;
 async function sendXtoys(params) {
-    state.lastSentParams = Object.assign({}, params);
-    state.lastSentTime   = Date.now();
     const mode = el.webhookType.value;
     // Bluetooth-only mode: nothing to POST.
     if (mode === 'bluetooth') return;
+    // Hard min-interval throttle (independent of params) to prevent fetch pile-up.
+    const now = Date.now();
+    if (state.lastSentTime && (now - state.lastSentTime) < WEBHOOK_MIN_INTERVAL_MS) return;
+    state.lastSentParams = Object.assign({}, params);
+    state.lastSentTime   = now;
     const qs = Object.entries(params).map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
     let url;
     if (mode === 'local') {
