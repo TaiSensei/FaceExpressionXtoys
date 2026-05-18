@@ -285,6 +285,11 @@
         .criteria-name { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .criteria-pts { font-size: 1rem; font-weight: 700; color: var(--text); }
         .criteria-pts span { font-size: 0.65rem; color: var(--muted); font-weight: 400; }
+        /* Per-emotion target row inside the Emotion Match card */
+        .emo-row { display: flex; gap: 3px; margin-top: 5px; font-size: 0.95rem; line-height: 1; }
+        .emo-row span { opacity: 0.22; transition: opacity 0.15s, transform 0.15s, filter 0.15s; }
+        .emo-row span.target { opacity: 0.65; }
+        .emo-row span.active { opacity: 1; transform: scale(1.35); filter: drop-shadow(0 0 4px #16a34a); }
 
         /* BUTTONS */
         .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
@@ -5589,6 +5594,18 @@ return a / b;`,Tne=`
                         <label><input type="checkbox" id="enable-brows"  checked> &#129320; Brows Raised</label>
                         <label><input type="checkbox" id="enable-gaze"   checked> &#127917; Expression Lock</label>
                         <label><input type="checkbox" id="enable-stable" checked> &#128208; Head Still</label>
+                        <label><input type="checkbox" id="enable-emomatch" checked> &#127917; Emotion Match</label>
+                    </div>
+
+                    <div class="panel-title" style="margin-top:14px;font-size:0.72rem">Emotion targets (&#127917; Emotion Match scores while any selected emotion is dominant)</div>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px 10px;font-size:0.85rem">
+                        <label><input type="checkbox" id="emo-neutral">   &#128528; neutral</label>
+                        <label><input type="checkbox" id="emo-happy" checked> &#128522; happy</label>
+                        <label><input type="checkbox" id="emo-sad">       &#128546; sad</label>
+                        <label><input type="checkbox" id="emo-angry">     &#128544; angry</label>
+                        <label><input type="checkbox" id="emo-fearful">   &#128552; fearful</label>
+                        <label><input type="checkbox" id="emo-disgusted"> &#129314; disgusted</label>
+                        <label><input type="checkbox" id="emo-surprised" checked> &#128558; surprised</label>
                     </div>
 
                     <div class="form-row" style="margin-top:10px">
@@ -5714,6 +5731,23 @@ return a / b;`,Tne=`
                         <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-stable"></div></div>
                     </div>
                 </div>
+                <div class="criteria-card" id="crit-emomatch">
+                    <div class="criteria-icon">&#127917;</div>
+                    <div class="criteria-info">
+                        <div class="criteria-name">Emotion Match</div>
+                        <div class="criteria-pts" id="pts-emomatch">0 <span>pts</span></div>
+                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-emomatch"></div></div>
+                        <div class="emo-row" id="emo-row">
+                            <span data-emo="neutral">&#128528;</span>
+                            <span data-emo="happy">&#128522;</span>
+                            <span data-emo="sad">&#128546;</span>
+                            <span data-emo="angry">&#128544;</span>
+                            <span data-emo="fearful">&#128552;</span>
+                            <span data-emo="disgusted">&#129314;</span>
+                            <span data-emo="surprised">&#128558;</span>
+                        </div>
+                    </div>
+                </div>
                 <div class="criteria-card" id="crit-combo">
                     <div class="criteria-icon">&#9889;</div>
                     <div class="criteria-info">
@@ -5759,6 +5793,7 @@ return a / b;`,Tne=`
                 <tr><td>&#129320; Brows Raised</td><td id="bd-brows">0s</td></tr>
                 <tr><td>&#127917; Expr Lock</td><td id="bd-gaze">0s</td></tr>
                 <tr><td>&#128208; Head Still</td><td id="bd-stable">0s</td></tr>
+                <tr><td>&#127917; Emotion Match</td><td id="bd-emomatch">0s</td></tr>
                 <tr><td>&#9889; Combo</td><td id="bd-combo">0s</td></tr>
             </table>
         </div>
@@ -5838,10 +5873,10 @@ const state = {
     gameStartTime: 0,
     gameElapsed: 0,
     score: 0,
-    bd: { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 },
-    criteria:     { eyes:false, smile:false, brows:false, gaze:false, stable:false },
-    critTime:     { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 },
-    prevCriteria: { eyes:false, smile:false, brows:false, gaze:false, stable:false },
+    bd: { eyes:0, smile:0, brows:0, gaze:0, stable:0, emomatch:0, combo:0 },
+    criteria:     { eyes:false, smile:false, brows:false, gaze:false, stable:false, emomatch:false },
+    critTime:     { eyes:0, smile:0, brows:0, gaze:0, stable:0, emomatch:0, combo:0 },
+    prevCriteria: { eyes:false, smile:false, brows:false, gaze:false, stable:false, emomatch:false },
     // expression smoothing
     exprHistory: [],
     stableExpr: 'neutral',
@@ -5860,7 +5895,9 @@ const state = {
     // expression lock
     exprLock: null,
     // per-criterion enable flags (live-mirrored from settings checkboxes)
-    enabled: { eyes:true, smile:true, brows:true, gaze:true, stable:true },
+    enabled: { eyes:true, smile:true, brows:true, gaze:true, stable:true, emomatch:true },
+    // emotion-target set for the Emotion Match criterion (live-mirrored from settings)
+    emotionTargets: { neutral:false, happy:true, sad:false, angry:false, fearful:false, disgusted:false, surprised:true },
     // neutral-face baseline (captured via Capture Neutral Baseline)
     baseline: null,
     // round intensity tracking
@@ -5904,6 +5941,16 @@ const el = {
     enBrows:  $('enable-brows'),
     enGaze:   $('enable-gaze'),
     enStable: $('enable-stable'),
+    enEmomatch: $('enable-emomatch'),
+    // emotion-target checkboxes (Emotion Match criterion)
+    emoNeutral:   $('emo-neutral'),
+    emoHappy:     $('emo-happy'),
+    emoSad:       $('emo-sad'),
+    emoAngry:     $('emo-angry'),
+    emoFearful:   $('emo-fearful'),
+    emoDisgusted: $('emo-disgusted'),
+    emoSurprised: $('emo-surprised'),
+    emoRow:       $('emo-row'),
     // baseline + intensity HUD
     baselineBtn:    $('baseline-btn'),
     baselineStatus: $('baseline-status'),
@@ -5951,15 +5998,18 @@ const el = {
     critBrows: $('crit-brows'), ptsBrows: $('pts-brows'),
     critGaze:  $('crit-gaze'),  ptsGaze:  $('pts-gaze'),
     critStable:$('crit-stable'),ptsStable:$('pts-stable'),
+    critEmomatch: $('crit-emomatch'), ptsEmomatch: $('pts-emomatch'),
     critCombo: $('crit-combo'), ptsCombo: $('pts-combo'),
     // time bars
     barEyes:  $('bar-eyes'),  barSmile: $('bar-smile'),
     barBrows: $('bar-brows'), barGaze:  $('bar-gaze'),
-    barStable:$('bar-stable'),barCombo: $('bar-combo'),
+    barStable:$('bar-stable'),barEmomatch:$('bar-emomatch'),
+    barCombo: $('bar-combo'),
     // breakdown
     bdEyes:  $('bd-eyes'),  bdSmile: $('bd-smile'),
     bdBrows: $('bd-brows'), bdGaze:  $('bd-gaze'),
-    bdStable:$('bd-stable'),bdCombo: $('bd-combo'),
+    bdStable:$('bd-stable'),bdEmomatch:$('bd-emomatch'),
+    bdCombo: $('bd-combo'),
     // leaderboard
     lbBody:           $('lb-body'),
     // name modal
@@ -6564,12 +6614,15 @@ async function detectFace() {
                 }
                 ctx.restore();
             } catch (_) { /* overlay is decorative; never break the loop */ }
+            // Emotion Match: stable dominant expression must be in the user-selected target set
+            const emomatchOk = en.emomatch && !!state.emotionTargets[state.stableExpr];
             state.criteria = {
-                eyes:   en.eyes   && eyesOpen,
-                smile:  en.smile  && isSmiling,
-                brows:  en.brows  && browsOk,
-                gaze:   en.gaze   && gazeOk,
-                stable: en.stable && headStable
+                eyes:     en.eyes   && eyesOpen,
+                smile:    en.smile  && isSmiling,
+                brows:    en.brows  && browsOk,
+                gaze:     en.gaze   && gazeOk,
+                stable:   en.stable && headStable,
+                emomatch: emomatchOk
             };
 
             // ── Live UI ─────────────────────────────────────────
@@ -6618,7 +6671,7 @@ async function detectFace() {
 
         } else {
             // No face detected
-            state.criteria   = { eyes:false, smile:false, brows:false, gaze:false, stable:false };
+            state.criteria   = { eyes:false, smile:false, brows:false, gaze:false, stable:false, emomatch:false };
             state.lastNose   = null;
             state.headStillSince = 0;
             el.emotionText.textContent  = 'No face';
@@ -6663,37 +6716,52 @@ function refreshCritCards() {
     const maxSec  = GAME_DURATION_SEC;
 
     // Detect activations and fire flashes
-    if (c.eyes   && !prev.eyes)   flashHud(el.hudEyes,   '#7c3aed', false);
-    if (c.smile  && !prev.smile)  flashHud(el.hudSmile,  '#16a34a', false);
-    if (c.brows  && !prev.brows)  flashHud(el.hudBrows,  '#0891b2', false);
-    if (c.gaze   && !prev.gaze)   flashHud(el.hudGaze,   '#7c3aed', false);
-    if (c.stable && !prev.stable) flashHud(el.hudStable, '#0891b2', false);
-    if (combo    && !prevCombo)   flashHud(el.hudStable, '#eab308', true);
+    if (c.eyes     && !prev.eyes)     flashHud(el.hudEyes,   '#7c3aed', false);
+    if (c.smile    && !prev.smile)    flashHud(el.hudSmile,  '#16a34a', false);
+    if (c.brows    && !prev.brows)    flashHud(el.hudBrows,  '#0891b2', false);
+    if (c.gaze     && !prev.gaze)     flashHud(el.hudGaze,   '#7c3aed', false);
+    if (c.stable   && !prev.stable)   flashHud(el.hudStable, '#0891b2', false);
+    if (c.emomatch && !prev.emomatch) flashHud(el.hudGaze,   '#f59e0b', false);
+    if (combo      && !prevCombo)     flashHud(el.hudStable, '#eab308', true);
 
-    state.prevCriteria = { eyes: c.eyes, smile: c.smile, brows: c.brows, gaze: c.gaze, stable: c.stable };
+    state.prevCriteria = { eyes: c.eyes, smile: c.smile, brows: c.brows, gaze: c.gaze, stable: c.stable, emomatch: c.emomatch };
 
-    setCard(el.critEyes,  c.eyes);
-    setCard(el.critSmile, c.smile);
-    setCard(el.critBrows, c.brows);
-    setCard(el.critGaze,  c.gaze);
-    setCard(el.critStable,c.stable);
-    setCard(el.critCombo, combo);
+    setCard(el.critEyes,     c.eyes);
+    setCard(el.critSmile,    c.smile);
+    setCard(el.critBrows,    c.brows);
+    setCard(el.critGaze,     c.gaze);
+    setCard(el.critStable,   c.stable);
+    setCard(el.critEmomatch, c.emomatch);
+    setCard(el.critCombo,    combo);
 
-    el.ptsEyes.innerHTML   = fmtSec(state.bd.eyes);
-    el.ptsSmile.innerHTML  = fmtSec(state.bd.smile);
-    el.ptsBrows.innerHTML  = fmtSec(state.bd.brows);
-    el.ptsGaze.innerHTML   = fmtSec(state.bd.gaze);
-    el.ptsStable.innerHTML = fmtSec(state.bd.stable);
-    el.ptsCombo.innerHTML  = fmtSec(state.bd.combo);
+    el.ptsEyes.innerHTML     = fmtSec(state.bd.eyes);
+    el.ptsSmile.innerHTML    = fmtSec(state.bd.smile);
+    el.ptsBrows.innerHTML    = fmtSec(state.bd.brows);
+    el.ptsGaze.innerHTML     = fmtSec(state.bd.gaze);
+    el.ptsStable.innerHTML   = fmtSec(state.bd.stable);
+    el.ptsEmomatch.innerHTML = fmtSec(state.bd.emomatch);
+    el.ptsCombo.innerHTML    = fmtSec(state.bd.combo);
 
     // Elapsed time bars
     const t = state.critTime;
-    el.barEyes.style.width   = Math.min(100, (t.eyes   / maxSec) * 100) + '%';
-    el.barSmile.style.width  = Math.min(100, (t.smile  / maxSec) * 100) + '%';
-    el.barBrows.style.width  = Math.min(100, (t.brows  / maxSec) * 100) + '%';
-    el.barGaze.style.width   = Math.min(100, (t.gaze   / maxSec) * 100) + '%';
-    el.barStable.style.width = Math.min(100, (t.stable / maxSec) * 100) + '%';
-    el.barCombo.style.width  = Math.min(100, (t.combo  / maxSec) * 100) + '%';
+    el.barEyes.style.width     = Math.min(100, (t.eyes     / maxSec) * 100) + '%';
+    el.barSmile.style.width    = Math.min(100, (t.smile    / maxSec) * 100) + '%';
+    el.barBrows.style.width    = Math.min(100, (t.brows    / maxSec) * 100) + '%';
+    el.barGaze.style.width     = Math.min(100, (t.gaze     / maxSec) * 100) + '%';
+    el.barStable.style.width   = Math.min(100, (t.stable   / maxSec) * 100) + '%';
+    el.barEmomatch.style.width = Math.min(100, (t.emomatch / maxSec) * 100) + '%';
+    el.barCombo.style.width    = Math.min(100, (t.combo    / maxSec) * 100) + '%';
+
+    // Emotion target row: dim non-targets, brighten targets, scale the dominant one
+    if (el.emoRow) {
+        const cur = state.stableExpr;
+        el.emoRow.querySelectorAll('span[data-emo]').forEach(sp => {
+            const e = sp.dataset.emo;
+            const isTarget = !!state.emotionTargets[e];
+            sp.classList.toggle('target', isTarget);
+            sp.classList.toggle('active', isTarget && e === cur && state.enabled.emomatch);
+        });
+    }
 }
 function setCard(card, active) { card.classList.toggle('active', !!active); }
 
@@ -6709,11 +6777,12 @@ function startGame() {
     SMILE_BREAK_DECAY_PER_SEC = Math.max(0, parseFloat(el.smileBreakDecay.value) || 0);
     MAX_SCORE_SEC           = GAME_DURATION_SEC * 5;
     state.enabled = {
-        eyes:   el.enEyes.checked,
-        smile:  el.enSmile.checked,
-        brows:  el.enBrows.checked,
-        gaze:   el.enGaze.checked,
-        stable: el.enStable.checked
+        eyes:     el.enEyes.checked,
+        smile:    el.enSmile.checked,
+        brows:    el.enBrows.checked,
+        gaze:     el.enGaze.checked,
+        stable:   el.enStable.checked,
+        emomatch: el.enEmomatch.checked
     };
 
     state.gameActive    = true;
@@ -6721,9 +6790,9 @@ function startGame() {
     state.gameStartTime = Date.now();
     state.gameElapsed   = 0;
     state.score         = 0;
-    state.bd            = { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 };
-    state.critTime      = { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 };
-    state.prevCriteria  = { eyes:false, smile:false, brows:false, gaze:false, stable:false };
+    state.bd            = { eyes:0, smile:0, brows:0, gaze:0, stable:0, emomatch:0, combo:0 };
+    state.critTime      = { eyes:0, smile:0, brows:0, gaze:0, stable:0, emomatch:0, combo:0 };
+    state.prevCriteria  = { eyes:false, smile:false, brows:false, gaze:false, stable:false, emomatch:false };
     state.currentIntensity = ROUND_START_INTENSITY;
     state.targetIntensity  = ROUND_START_INTENSITY;
     state.smileBrokenSince = 0;
@@ -6755,11 +6824,12 @@ function scoreTick() {
 
     const c = state.criteria;
     const tick = SCORE_TICK_MS / 1000;
-    if (c.eyes)   { state.bd.eyes   += tick; state.score += tick; state.critTime.eyes   += tick; }
-    if (c.smile)  { state.bd.smile  += tick; state.score += tick; state.critTime.smile  += tick; }
-    if (c.brows)  { state.bd.brows  += tick; state.score += tick; state.critTime.brows  += tick; }
-    if (c.gaze)   { state.bd.gaze   += tick; state.score += tick; state.critTime.gaze   += tick; }
-    if (c.stable) { state.bd.stable += tick; state.score += tick; state.critTime.stable += tick; }
+    if (c.eyes)     { state.bd.eyes     += tick; state.score += tick; state.critTime.eyes     += tick; }
+    if (c.smile)    { state.bd.smile    += tick; state.score += tick; state.critTime.smile    += tick; }
+    if (c.brows)    { state.bd.brows    += tick; state.score += tick; state.critTime.brows    += tick; }
+    if (c.gaze)     { state.bd.gaze     += tick; state.score += tick; state.critTime.gaze     += tick; }
+    if (c.stable)   { state.bd.stable   += tick; state.score += tick; state.critTime.stable   += tick; }
+    if (c.emomatch) { state.bd.emomatch += tick; state.score += tick; state.critTime.emomatch += tick; }
     if (c.eyes && c.smile && c.brows && c.gaze && c.stable) {
         state.bd.combo += tick;
         state.critTime.combo += tick;
@@ -6832,8 +6902,8 @@ function stopGame(timeUp) {
 function resetGame() {
     if (state.gameActive) stopGame(false);
     state.score       = 0;
-    state.bd          = { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 };
-    state.critTime    = { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 };
+    state.bd          = { eyes:0, smile:0, brows:0, gaze:0, stable:0, emomatch:0, combo:0 };
+    state.critTime    = { eyes:0, smile:0, brows:0, gaze:0, stable:0, emomatch:0, combo:0 };
     state.gameElapsed = 0;
     el.resetGameBtn.disabled = true;
     if (state.isRunning) el.startGameBtn.disabled = false;
@@ -6871,12 +6941,13 @@ function updateScoreUI() {
     });
 
     // Breakdown table
-    el.bdEyes.textContent   = fmtSec(state.bd.eyes);
-    el.bdSmile.textContent  = fmtSec(state.bd.smile);
-    el.bdBrows.textContent  = fmtSec(state.bd.brows);
-    el.bdGaze.textContent   = fmtSec(state.bd.gaze);
-    el.bdStable.textContent = fmtSec(state.bd.stable);
-    el.bdCombo.textContent  = fmtSec(state.bd.combo);
+    el.bdEyes.textContent     = fmtSec(state.bd.eyes);
+    el.bdSmile.textContent    = fmtSec(state.bd.smile);
+    el.bdBrows.textContent    = fmtSec(state.bd.brows);
+    el.bdGaze.textContent     = fmtSec(state.bd.gaze);
+    el.bdStable.textContent   = fmtSec(state.bd.stable);
+    el.bdEmomatch.textContent = fmtSec(state.bd.emomatch);
+    el.bdCombo.textContent    = fmtSec(state.bd.combo);
 }
 
 // ============================================================
@@ -6892,6 +6963,7 @@ function showModal() {
         '<div class="modal-breakdown-row"><span>🙂 Brows Relaxed</span><span>' + state.bd.brows + ' pts</span></div>' +
         '<div class="modal-breakdown-row"><span>🎯 Eye Gaze</span><span>' + state.bd.gaze + ' pts</span></div>' +
         '<div class="modal-breakdown-row"><span>📐 Head Still</span><span>' + state.bd.stable + ' pts</span></div>' +
+        '<div class="modal-breakdown-row"><span>🎭 Emotion Match</span><span>' + Math.round(state.bd.emomatch) + ' pts</span></div>' +
         '<div class="modal-breakdown-row"><span>⚡ Combo Bonus</span><span>' + state.bd.combo + ' pts</span></div>' +
         '<div class="modal-breakdown-row total"><span>Total</span><span>' + state.score + ' pts</span></div>';
     el.modalOverlay.classList.add('active');
@@ -7163,16 +7235,25 @@ el.baselineBtn.addEventListener('click', captureBaseline);
 el.btConnectBtn.addEventListener('click', () => motorbunny.connect());
 el.btDisconnectBtn.addEventListener('click', () => motorbunny.disconnect());
 // Live-mirror checkbox state so toggling mid-round takes effect immediately
-['enEyes','enSmile','enBrows','enGaze','enStable'].forEach(k => {
+['enEyes','enSmile','enBrows','enGaze','enStable','enEmomatch'].forEach(k => {
     el[k].addEventListener('change', () => {
         state.enabled = {
-            eyes:   el.enEyes.checked,
-            smile:  el.enSmile.checked,
-            brows:  el.enBrows.checked,
-            gaze:   el.enGaze.checked,
-            stable: el.enStable.checked
+            eyes:     el.enEyes.checked,
+            smile:    el.enSmile.checked,
+            brows:    el.enBrows.checked,
+            gaze:     el.enGaze.checked,
+            stable:   el.enStable.checked,
+            emomatch: el.enEmomatch.checked
         };
     });
+});
+// Live-mirror per-emotion target checkboxes for the Emotion Match criterion
+[
+    ['emoNeutral','neutral'], ['emoHappy','happy'], ['emoSad','sad'],
+    ['emoAngry','angry'], ['emoFearful','fearful'],
+    ['emoDisgusted','disgusted'], ['emoSurprised','surprised']
+].forEach(([k, expr]) => {
+    el[k].addEventListener('change', () => { state.emotionTargets[expr] = el[k].checked; });
 });
 el.showRaw.addEventListener('change', function () {
     el.rawView.classList.toggle('hidden', !this.checked);
