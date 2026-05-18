@@ -305,13 +305,18 @@
         }
         .btn:disabled { opacity: 0.35; cursor: not-allowed; }
         .btn-primary { background: linear-gradient(135deg, var(--accent), #9333ea); color: #fff; }
-        .btn-primary:not(:disabled):hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-primary:not(:disabled):hover { filter: brightness(1.12); transform: translateY(-1px); }
+        .btn-primary:not(:disabled):active { filter: brightness(0.9) !important; transform: translateY(1px) !important; transition: none; }
         .btn-danger { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
         .btn-danger:not(:disabled):hover { background: rgba(239,68,68,0.25); }
+        .btn-danger:not(:disabled):active { background: rgba(239,68,68,0.35) !important; transform: translateY(1px); transition: none; }
         .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
         .btn-secondary:not(:disabled):hover { background: var(--border); }
+        .btn-secondary:not(:disabled):active { filter: brightness(0.88) !important; transform: translateY(1px); transition: none; }
         .btn-cyan { background: rgba(6,182,212,0.15); color: var(--accent2); border: 1px solid rgba(6,182,212,0.3); }
         .btn-cyan:not(:disabled):hover { background: rgba(6,182,212,0.25); }
+        .btn-cyan:not(:disabled):active { background: rgba(6,182,212,0.35) !important; transform: translateY(1px); transition: none; }
+        .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
         /* STATUS */
         .status-pill {
@@ -366,8 +371,9 @@
             color: var(--text);
             font-size: 0.85rem;
         }
-        .form-row input:focus, .form-row select:focus { outline: none; border-color: var(--accent); }
+        .form-row input:focus, .form-row select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(139,92,246,0.18); }
         .form-row input[type="checkbox"] { width: auto; margin-right: 6px; }
+        .panel label { cursor: pointer; user-select: none; }
 
         /* GAME OVER MODAL */
         .modal-overlay {
@@ -484,7 +490,7 @@
             margin-bottom: 14px;
             transition: border-color 0.2s;
         }
-        .name-input:focus { outline: none; border-color: var(--accent); }
+        .name-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(139,92,246,0.22); }
 
         .hidden { display: none !important; }
     </style>
@@ -5763,7 +5769,8 @@ return a / b;`,Tne=`
         <div class="panel">
             <div class="panel-title">Game Controls</div>
             <div style="display:flex;flex-direction:column;gap:8px">
-                <button class="btn btn-primary" style="flex:none" id="start-game-btn" disabled>&#9654; Start Game</button>
+                <button class="btn btn-primary" style="flex:none" id="start-game-btn" disabled title="Starts camera automatically if needed, then asks for your name">&#9654; Start Game</button>
+                <div id="start-game-hint" style="font-size:0.72rem;color:var(--muted);margin-top:-4px">Camera will start automatically when you click Start Game</div>
                 <div style="display:flex;gap:8px">
                     <button class="btn btn-danger" id="stop-game-btn" disabled>&#9632; Stop</button>
                     <button class="btn btn-secondary" id="reset-game-btn" disabled>&#8635; Reset</button>
@@ -5817,7 +5824,7 @@ return a / b;`,Tne=`
 // ============================================================
 let   GAME_DURATION_SEC = 180;   // 3-minute default (overridden by Settings > Round Duration)
 const DETECTION_MS      = 100;   // face detection tick
-const SCORE_TICK_MS     = 500;   // scoring interval
+const SCORE_TICK_MS     = 100;   // scoring interval (100ms = 0.1s steps, smooth display)
 let   MAX_SCORE_SEC     = GAME_DURATION_SEC * 5; // recomputed on round start
 
 // Round intensity ramp & smile-break decay defaults (overridden by Settings inputs)
@@ -6958,14 +6965,14 @@ function showModal() {
     const nameTag = state.playerName ? ' \u2014 ' + state.playerName : '';
     document.querySelector('.modal-title').textContent = "Time's Up!" + nameTag;
     el.modalBreakdown.innerHTML =
-        '<div class="modal-breakdown-row"><span>👁️ Eyes Open</span><span>' + state.bd.eyes + ' pts</span></div>' +
-        '<div class="modal-breakdown-row"><span>😊 Smile</span><span>' + state.bd.smile + ' pts</span></div>' +
-        '<div class="modal-breakdown-row"><span>🙂 Brows Relaxed</span><span>' + state.bd.brows + ' pts</span></div>' +
-        '<div class="modal-breakdown-row"><span>🎯 Eye Gaze</span><span>' + state.bd.gaze + ' pts</span></div>' +
-        '<div class="modal-breakdown-row"><span>📐 Head Still</span><span>' + state.bd.stable + ' pts</span></div>' +
-        '<div class="modal-breakdown-row"><span>🎭 Emotion Match</span><span>' + Math.round(state.bd.emomatch) + ' pts</span></div>' +
-        '<div class="modal-breakdown-row"><span>⚡ Combo Bonus</span><span>' + state.bd.combo + ' pts</span></div>' +
-        '<div class="modal-breakdown-row total"><span>Total</span><span>' + state.score + ' pts</span></div>';
+        '<div class="modal-breakdown-row"><span>👁️ Eyes Open</span><span>' + fmtSec(state.bd.eyes) + '</span></div>' +
+        '<div class="modal-breakdown-row"><span>😊 Smile</span><span>' + fmtSec(state.bd.smile) + '</span></div>' +
+        '<div class="modal-breakdown-row"><span>🙂 Brows Relaxed</span><span>' + fmtSec(state.bd.brows) + '</span></div>' +
+        '<div class="modal-breakdown-row"><span>🎯 Eye Gaze</span><span>' + fmtSec(state.bd.gaze) + '</span></div>' +
+        '<div class="modal-breakdown-row"><span>📐 Head Still</span><span>' + fmtSec(state.bd.stable) + '</span></div>' +
+        '<div class="modal-breakdown-row"><span>🎭 Emotion Match</span><span>' + fmtSec(state.bd.emomatch) + '</span></div>' +
+        '<div class="modal-breakdown-row"><span>⚡ Combo Bonus</span><span>' + fmtSec(state.bd.combo) + '</span></div>' +
+        '<div class="modal-breakdown-row total"><span>Total</span><span>' + fmtSec(state.score) + '</span></div>';
     el.modalOverlay.classList.add('active');
 }
 function closeModal() {
@@ -7130,11 +7137,17 @@ async function testWebhook() {
 //  PLAYER NAME MODAL
 // ============================================================
 async function showNameModal() {
-    if (!state.isLibLoaded) { showStatus('Library still loading…', 'err'); return; }
+    if (!state.isLibLoaded) { showStatus('Models still loading — please wait…', 'err'); return; }
     if (!state.isRunning) {
+        const hint = document.getElementById('start-game-hint');
+        if (hint) hint.textContent = 'Starting camera…';
         showStatus('Starting camera…', 'info');
         await startCamera();
-        if (!state.isRunning) return; // camera failed
+        if (!state.isRunning) {
+            if (hint) hint.textContent = 'Camera failed — check browser permissions';
+            return; // camera failed — startCamera already showed error status
+        }
+        if (hint) hint.textContent = 'Camera running ✓';
     }
     el.playerNameInput.value = state.playerName || '';
     el.nameModalOverlay.classList.add('active');
