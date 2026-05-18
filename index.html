@@ -108,7 +108,16 @@
             display: block;
             transform: scaleX(-1);
         }
-        #face-canvas { display: none; }
+        /* Face tracking overlay — sits on top of the video, NOT mirrored
+           (we mirror box X coords in JS instead so the emoji/text reads correctly). */
+        #face-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 3;
+        }
         /* Palm pause: highlight camera border only */
         .video-wrap.palm-pause { box-shadow: 0 0 0 4px #f97316, 0 0 24px 4px rgba(249,115,22,0.35); }
         .video-wrap.palm-pause::after {
@@ -6467,6 +6476,94 @@ async function detectFace() {
 
             // Apply per-criterion enable flags (Settings checkboxes)
             const en = state.enabled;
+
+            // ── Animated face tracking box + dominant-emotion emoji ──
+            // Mirror X because the <video> element is CSS-flipped (scaleX(-1))
+            // but the canvas overlay is not flipped (so emoji/text render correctly).
+            try {
+                const box = face.detection.box;
+                const cw  = el.canvas.width;
+                const mx  = cw - box.x - box.width; // mirrored x
+                const my  = box.y;
+                const bw  = box.width, bh = box.height;
+                const critCount = [eyesOpen, isSmiling, browsOk, gazeOk, headStable].filter(Boolean).length;
+                const boxColor = critCount >= 4 ? '#10b981'
+                              : critCount >= 2 ? '#f59e0b'
+                              : critCount >= 1 ? '#3b82f6'
+                              : '#94a3b8';
+                const pulse = 1 + Math.sin(now / 180) * 0.18;
+                ctx.save();
+                ctx.strokeStyle = boxColor;
+                ctx.lineWidth   = 3 * pulse;
+                ctx.shadowColor = boxColor;
+                ctx.shadowBlur  = 14 * pulse;
+                // Rounded rect
+                const r = Math.min(14, bw * 0.12, bh * 0.12);
+                ctx.beginPath();
+                ctx.moveTo(mx + r, my);
+                ctx.lineTo(mx + bw - r, my);
+                ctx.quadraticCurveTo(mx + bw, my, mx + bw, my + r);
+                ctx.lineTo(mx + bw, my + bh - r);
+                ctx.quadraticCurveTo(mx + bw, my + bh, mx + bw - r, my + bh);
+                ctx.lineTo(mx + r, my + bh);
+                ctx.quadraticCurveTo(mx, my + bh, mx, my + bh - r);
+                ctx.lineTo(mx, my + r);
+                ctx.quadraticCurveTo(mx, my, mx + r, my);
+                ctx.closePath();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // Corner ticks (bigger lines at each corner for that “scanner” look)
+                const cornerLen = Math.min(22, bw * 0.18);
+                ctx.lineWidth = 4 * pulse;
+                ctx.beginPath();
+                // TL
+                ctx.moveTo(mx, my + cornerLen); ctx.lineTo(mx, my); ctx.lineTo(mx + cornerLen, my);
+                // TR
+                ctx.moveTo(mx + bw - cornerLen, my); ctx.lineTo(mx + bw, my); ctx.lineTo(mx + bw, my + cornerLen);
+                // BR
+                ctx.moveTo(mx + bw, my + bh - cornerLen); ctx.lineTo(mx + bw, my + bh); ctx.lineTo(mx + bw - cornerLen, my + bh);
+                // BL
+                ctx.moveTo(mx + cornerLen, my + bh); ctx.lineTo(mx, my + bh); ctx.lineTo(mx, my + bh - cornerLen);
+                ctx.stroke();
+
+                // Emoji + label above the box
+                const emoji = EMOJI_MAP[state.stableExpr] || '😐';
+                const label = state.stableExpr + ' ' + Math.round(maxP * 100) + '%';
+                const emojiSize = Math.max(28, Math.min(64, bw * 0.32));
+                const cx = mx + bw / 2;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'alphabetic';
+                // Label pill
+                ctx.font = '600 13px system-ui, -apple-system, sans-serif';
+                const labelW = ctx.measureText(label).width + 16;
+                const labelY = Math.max(emojiSize + 30, my - 6);
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+                const lx = cx - labelW / 2, ly = labelY - 18;
+                if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(lx, ly, labelW, 22, 11); ctx.fill(); }
+                else { ctx.fillRect(lx, ly, labelW, 22); }
+                ctx.fillStyle = boxColor;
+                ctx.fillText(label, cx, ly + 16);
+                // Emoji above the pill
+                ctx.font = emojiSize + 'px serif';
+                ctx.fillText(emoji, cx, ly - 6);
+
+                // Active-criteria icon row just under the box
+                const tickIcons = [];
+                if (en.eyes   && eyesOpen)   tickIcons.push('👁️');
+                if (en.smile  && isSmiling)  tickIcons.push('😊');
+                if (en.brows  && browsOk)    tickIcons.push('🤨');
+                if (en.gaze   && gazeOk)     tickIcons.push('🎭');
+                if (en.stable && headStable) tickIcons.push('🧠');
+                if (tickIcons.length) {
+                    ctx.font = '20px serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'top';
+                    const ty = my + bh + 6;
+                    tickIcons.forEach((t, i) => ctx.fillText(t, mx + 4 + i * 24, ty));
+                }
+                ctx.restore();
+            } catch (_) { /* overlay is decorative; never break the loop */ }
             state.criteria = {
                 eyes:   en.eyes   && eyesOpen,
                 smile:  en.smile  && isSmiling,
