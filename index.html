@@ -291,6 +291,17 @@
         .emo-row span.target { opacity: 0.65; }
         .emo-row span.active { opacity: 1; transform: scale(1.35); filter: drop-shadow(0 0 4px #16a34a); }
 
+        /* CRITERIA VERTICAL BARS (score panel) */
+        .crit-vbars { display: flex; gap: 5px; height: 70px; margin-top: 10px; }
+        .cvbar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; }
+        .cvbar-track { flex: 1; width: 100%; background: var(--surface2); border-radius: 4px; overflow: hidden; display: flex; align-items: flex-end; }
+        .cvbar-fill { width: 100%; height: 0%; border-radius: 3px; background: var(--cvbar-c, var(--border)); transition: height 0.12s linear; opacity: 0.2; }
+        .cvbar-col.enabled .cvbar-fill { opacity: 0.4; }
+        .cvbar-col.active .cvbar-fill { opacity: 1; filter: drop-shadow(0 0 4px var(--cvbar-c)); }
+        .cvbar-lbl { font-size: 0.68rem; line-height: 1; opacity: 0.3; transition: opacity 0.2s; }
+        .cvbar-col.enabled .cvbar-lbl { opacity: 0.55; }
+        .cvbar-col.active .cvbar-lbl { opacity: 1; }
+
         /* BUTTONS */
         .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
         .btn {
@@ -5690,6 +5701,36 @@ return a / b;`,Tne=`
                         <div class="timer-seg" data-tseg="9"></div>
                     </div>
                 </div>
+                <div class="crit-vbars">
+                    <div class="cvbar-col" id="cvbar-col-eyes" style="--cvbar-c:#06b6d4">
+                        <div class="cvbar-track"><div class="cvbar-fill" id="cvbar-eyes"></div></div>
+                        <span class="cvbar-lbl">&#128065;&#65039;</span>
+                    </div>
+                    <div class="cvbar-col" id="cvbar-col-smile" style="--cvbar-c:#16a34a">
+                        <div class="cvbar-track"><div class="cvbar-fill" id="cvbar-smile"></div></div>
+                        <span class="cvbar-lbl">&#128522;</span>
+                    </div>
+                    <div class="cvbar-col" id="cvbar-col-brows" style="--cvbar-c:#4f86f0">
+                        <div class="cvbar-track"><div class="cvbar-fill" id="cvbar-brows"></div></div>
+                        <span class="cvbar-lbl">&#129320;</span>
+                    </div>
+                    <div class="cvbar-col" id="cvbar-col-gaze" style="--cvbar-c:#7c3aed">
+                        <div class="cvbar-track"><div class="cvbar-fill" id="cvbar-gaze"></div></div>
+                        <span class="cvbar-lbl">&#127919;</span>
+                    </div>
+                    <div class="cvbar-col" id="cvbar-col-stable" style="--cvbar-c:#0891b2">
+                        <div class="cvbar-track"><div class="cvbar-fill" id="cvbar-stable"></div></div>
+                        <span class="cvbar-lbl">&#128208;</span>
+                    </div>
+                    <div class="cvbar-col" id="cvbar-col-emomatch" style="--cvbar-c:#f59e0b">
+                        <div class="cvbar-track"><div class="cvbar-fill" id="cvbar-emomatch"></div></div>
+                        <span class="cvbar-lbl">&#127917;</span>
+                    </div>
+                    <div class="cvbar-col" id="cvbar-col-combo" style="--cvbar-c:#eab308">
+                        <div class="cvbar-track"><div class="cvbar-fill" id="cvbar-combo"></div></div>
+                        <span class="cvbar-lbl">&#9889;</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -6012,6 +6053,14 @@ const el = {
     barBrows: $('bar-brows'), barGaze:  $('bar-gaze'),
     barStable:$('bar-stable'),barEmomatch:$('bar-emomatch'),
     barCombo: $('bar-combo'),
+    // criteria vertical bars (score panel)
+    cvbarEyes:     $('cvbar-eyes'),     cvbarColEyes:     $('cvbar-col-eyes'),
+    cvbarSmile:    $('cvbar-smile'),    cvbarColSmile:    $('cvbar-col-smile'),
+    cvbarBrows:    $('cvbar-brows'),    cvbarColBrows:    $('cvbar-col-brows'),
+    cvbarGaze:     $('cvbar-gaze'),     cvbarColGaze:     $('cvbar-col-gaze'),
+    cvbarStable:   $('cvbar-stable'),   cvbarColStable:   $('cvbar-col-stable'),
+    cvbarEmomatch: $('cvbar-emomatch'), cvbarColEmomatch: $('cvbar-col-emomatch'),
+    cvbarCombo:    $('cvbar-combo'),    cvbarColCombo:    $('cvbar-col-combo'),
     // breakdown
     bdEyes:  $('bd-eyes'),  bdSmile: $('bd-smile'),
     bdBrows: $('bd-brows'), bdGaze:  $('bd-gaze'),
@@ -6955,6 +7004,26 @@ function updateScoreUI() {
     el.bdStable.textContent   = fmtSec(state.bd.stable);
     el.bdEmomatch.textContent = fmtSec(state.bd.emomatch);
     el.bdCombo.textContent    = fmtSec(state.bd.combo);
+
+    // Criteria vertical bars
+    const dur = Math.max(1, GAME_DURATION_SEC);
+    const ct  = state.critTime;
+    const cv  = state.criteria;
+    const en  = state.enabled;
+    el.cvbarEyes.style.height     = Math.min(100, (ct.eyes     / dur) * 100) + '%';
+    el.cvbarSmile.style.height    = Math.min(100, (ct.smile    / dur) * 100) + '%';
+    el.cvbarBrows.style.height    = Math.min(100, (ct.brows    / dur) * 100) + '%';
+    el.cvbarGaze.style.height     = Math.min(100, (ct.gaze     / dur) * 100) + '%';
+    el.cvbarStable.style.height   = Math.min(100, (ct.stable   / dur) * 100) + '%';
+    el.cvbarEmomatch.style.height = Math.min(100, (ct.emomatch / dur) * 100) + '%';
+    el.cvbarCombo.style.height    = Math.min(100, (ct.combo    / dur) * 100) + '%';
+    el.cvbarColEyes.classList.toggle('enabled',  !!en.eyes);     el.cvbarColEyes.classList.toggle('active',  !!cv.eyes);
+    el.cvbarColSmile.classList.toggle('enabled', !!en.smile);    el.cvbarColSmile.classList.toggle('active', !!cv.smile);
+    el.cvbarColBrows.classList.toggle('enabled', !!en.brows);    el.cvbarColBrows.classList.toggle('active', !!cv.brows);
+    el.cvbarColGaze.classList.toggle('enabled',  !!en.gaze);     el.cvbarColGaze.classList.toggle('active',  !!cv.gaze);
+    el.cvbarColStable.classList.toggle('enabled',!!en.stable);   el.cvbarColStable.classList.toggle('active', !!cv.stable);
+    el.cvbarColEmomatch.classList.toggle('enabled',!!en.emomatch);el.cvbarColEmomatch.classList.toggle('active',!!cv.emomatch);
+    el.cvbarColCombo.classList.toggle('enabled', true);          el.cvbarColCombo.classList.toggle('active',  !!(cv.eyes && cv.smile && cv.brows && cv.gaze && cv.stable));
 }
 
 // ============================================================
