@@ -371,6 +371,7 @@
         .accordion-chevron { transition: transform 0.2s; color: var(--muted); font-size: 0.8rem; }
         .accordion-body { overflow: hidden; max-height: 0; transition: max-height 0.35s ease; }
         .accordion-body.open { max-height: 700px; }
+        #htp-body.open { max-height: 1500px; }
         .form-row { margin-bottom: 12px; }
         .form-row label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 4px; }
         .form-row input, .form-row select {
@@ -5451,10 +5452,40 @@ return a / b;`,Tne=`
             </div>
         </div>
 
-        <!-- How to Play -->
+        <!-- Game Controls -->
+        <div class="panel">
+            <div class="panel-title">Game Controls</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+                <button class="btn btn-primary" style="flex:none" id="start-game-btn" disabled title="Starts camera automatically if needed, then asks for your name">&#9654; Start Game</button>
+                <div id="start-game-hint" style="font-size:0.72rem;color:var(--muted);margin-top:-4px">Camera will start automatically when you click Start Game</div>
+                <div style="display:flex;gap:8px">
+                    <button class="btn btn-danger" id="stop-game-btn" disabled>&#9632; Stop</button>
+                    <button class="btn btn-secondary" id="reset-game-btn" disabled>&#8635; Reset</button>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <button class="btn btn-secondary" id="lock-expr-btn" style="flex:none">&#127917; Lock Expression</button>
+                    <span id="lock-status" style="font-size:0.78rem;color:var(--muted)">Not set &mdash; face camera &amp; press</span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <button class="btn btn-secondary" id="baseline-btn" style="flex:none">&#129504; Capture Neutral Baseline</button>
+                    <span id="baseline-status" style="font-size:0.78rem;color:var(--muted)">No baseline &mdash; thresholds use defaults</span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;font-size:0.78rem;color:var(--muted)">
+                    <span>Live intensity:</span>
+                    <strong id="intensity-display" style="color:var(--text)">0%</strong>
+                    <span id="smile-break-indicator" style="margin-left:auto;color:var(--accent);display:none">⚠️ smile broken &mdash; decaying</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- How to Play (collapsible, collapsed by default) -->
         <div class="panel" style="font-size:0.82rem;line-height:1.6;color:var(--muted)">
-            <div class="panel-title">How to Play</div>
-            <p style="margin-bottom:12px">Hit <strong style="color:var(--text)">Start</strong> and hold your best face for the whole round — your camera does all the work. No buttons, no controllers. Just your face.</p>
+            <div class="accordion-header" onclick="toggleHowToPlay()">
+                <div class="panel-title" style="margin:0">How to Play</div>
+                <span class="accordion-chevron" id="htp-chevron">&#9660;</span>
+            </div>
+            <div class="accordion-body" id="htp-body">
+            <p style="margin-bottom:12px;margin-top:12px">Hit <strong style="color:var(--text)">Start</strong> and hold your best face for the whole round — your camera does all the work. No buttons, no controllers. Just your face.</p>
 
             <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
@@ -5509,6 +5540,7 @@ return a / b;`,Tne=`
                     <p style="margin-top:10px;color:var(--muted)"><strong style="color:var(--text)">Score formula:</strong> each criterion accumulates <em>active seconds</em> independently. Final score = sum of active seconds across all five criteria. Maximum possible = duration (s) &times; 5 (e.g. 180&nbsp;&times;&nbsp;5 = 900 pts for a 3-minute round). Combo seconds are counted on top of individual criteria.</p>
                 </div>
             </details>
+            </div>
         </div>
 
         <!-- Scoring Criteria panel moved to the right column, under Score -->
@@ -5734,6 +5766,16 @@ return a / b;`,Tne=`
             </div>
         </div>
 
+        <!-- Leaderboard -->
+        <div class="panel">
+            <div class="panel-title">&#127942; Leaderboard</div>
+            <div id="lb-body"><p class="lb-empty">No scores yet &mdash; play a full game!</p></div>
+            <div class="lb-btn-row">
+                <button class="btn btn-cyan" onclick="exportLeaderboard()">&#11015; Export JSON</button>
+                <button class="btn btn-secondary" onclick="clearLeaderboard()">&#128465; Clear</button>
+            </div>
+        </div>
+
         <!-- Scoring Criteria (live) — collapsible panel, collapsed by default -->
         <div class="panel">
             <div class="accordion-header" onclick="toggleCriteriaPanel()">
@@ -5808,56 +5850,6 @@ return a / b;`,Tne=`
                     </div>
                 </div>
             </div>
-            </div>
-        </div>
-
-        <!-- Game Controls -->
-        <div class="panel">
-            <div class="panel-title">Game Controls</div>
-            <div style="display:flex;flex-direction:column;gap:8px">
-                <button class="btn btn-primary" style="flex:none" id="start-game-btn" disabled title="Starts camera automatically if needed, then asks for your name">&#9654; Start Game</button>
-                <div id="start-game-hint" style="font-size:0.72rem;color:var(--muted);margin-top:-4px">Camera will start automatically when you click Start Game</div>
-                <div style="display:flex;gap:8px">
-                    <button class="btn btn-danger" id="stop-game-btn" disabled>&#9632; Stop</button>
-                    <button class="btn btn-secondary" id="reset-game-btn" disabled>&#8635; Reset</button>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center">
-                    <button class="btn btn-secondary" id="lock-expr-btn" style="flex:none">&#127917; Lock Expression</button>
-                    <span id="lock-status" style="font-size:0.78rem;color:var(--muted)">Not set &mdash; face camera &amp; press</span>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center">
-                    <button class="btn btn-secondary" id="baseline-btn" style="flex:none">&#129504; Capture Neutral Baseline</button>
-                    <span id="baseline-status" style="font-size:0.78rem;color:var(--muted)">No baseline &mdash; thresholds use defaults</span>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center;font-size:0.78rem;color:var(--muted)">
-                    <span>Live intensity:</span>
-                    <strong id="intensity-display" style="color:var(--text)">0%</strong>
-                    <span id="smile-break-indicator" style="margin-left:auto;color:var(--accent);display:none">⚠️ smile broken &mdash; decaying</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Score Breakdown -->
-        <div class="panel">
-            <div class="panel-title">Time Breakdown</div>
-            <table class="breakdown-table">
-                <tr><td>&#128065;&#65039; Eyes Open</td><td id="bd-eyes">0s</td></tr>
-                <tr><td>&#128522; Smile</td><td id="bd-smile">0s</td></tr>
-                <tr><td>&#129320; Brows Raised</td><td id="bd-brows">0s</td></tr>
-                <tr><td>&#127917; Expr Lock</td><td id="bd-gaze">0s</td></tr>
-                <tr><td>&#128208; Head Still</td><td id="bd-stable">0s</td></tr>
-                <tr><td>&#127917; Emotion Match</td><td id="bd-emomatch">0s</td></tr>
-                <tr><td>&#9889; Combo</td><td id="bd-combo">0s</td></tr>
-            </table>
-        </div>
-
-        <!-- Leaderboard -->
-        <div class="panel">
-            <div class="panel-title">&#127942; Leaderboard</div>
-            <div id="lb-body"><p class="lb-empty">No scores yet &mdash; play a full game!</p></div>
-            <div class="lb-btn-row">
-                <button class="btn btn-cyan" onclick="exportLeaderboard()">&#11015; Export JSON</button>
-                <button class="btn btn-secondary" onclick="clearLeaderboard()">&#128465; Clear</button>
             </div>
         </div>
 
@@ -6066,11 +6058,6 @@ const el = {
     cvbarStable:   $('cvbar-stable'),   cvbarColStable:   $('cvbar-col-stable'),
     cvbarEmomatch: $('cvbar-emomatch'), cvbarColEmomatch: $('cvbar-col-emomatch'),
     cvbarCombo:    $('cvbar-combo'),    cvbarColCombo:    $('cvbar-col-combo'),
-    // breakdown
-    bdEyes:  $('bd-eyes'),  bdSmile: $('bd-smile'),
-    bdBrows: $('bd-brows'), bdGaze:  $('bd-gaze'),
-    bdStable:$('bd-stable'),bdEmomatch:$('bd-emomatch'),
-    bdCombo: $('bd-combo'),
     // leaderboard
     lbBody:           $('lb-body'),
     // name modal
@@ -6096,6 +6083,11 @@ function showStatus(msg, type='info') {
 // ============================================================
 //  ACCORDION
 // ============================================================
+function toggleHowToPlay() {
+    const body = $('htp-body'), chev = $('htp-chevron');
+    body.classList.toggle('open');
+    chev.innerHTML = body.classList.contains('open') ? '&#9650;' : '&#9660;';
+}
 function toggleCriteriaPanel() {
     const body = $('crit-panel-body'), chev = $('crit-panel-chevron');
     body.classList.toggle('open');
@@ -7006,15 +6998,6 @@ function updateScoreUI() {
     el.timerSegs.querySelectorAll('.timer-seg').forEach(seg => {
         seg.style.background = parseInt(seg.dataset.tseg) < litSegs ? tColor : '';
     });
-
-    // Breakdown table
-    el.bdEyes.textContent     = fmtSec(state.bd.eyes);
-    el.bdSmile.textContent    = fmtSec(state.bd.smile);
-    el.bdBrows.textContent    = fmtSec(state.bd.brows);
-    el.bdGaze.textContent     = fmtSec(state.bd.gaze);
-    el.bdStable.textContent   = fmtSec(state.bd.stable);
-    el.bdEmomatch.textContent = fmtSec(state.bd.emomatch);
-    el.bdCombo.textContent    = fmtSec(state.bd.combo);
 
     // Criteria vertical bars
     const dur = Math.max(1, GAME_DURATION_SEC);
