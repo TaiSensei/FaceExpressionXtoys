@@ -5734,10 +5734,14 @@ return a / b;`,Tne=`
             </div>
         </div>
 
-        <!-- Scoring Criteria (live) — directly under the Score so live progress bars are visible in real time -->
+        <!-- Scoring Criteria (live) — collapsible panel, collapsed by default -->
         <div class="panel">
-            <div class="panel-title">Scoring Criteria (live)</div>
-            <div class="criteria-grid">
+            <div class="accordion-header" onclick="toggleCriteriaPanel()">
+                <div class="panel-title" style="margin:0">Scoring Criteria (live)</div>
+                <span class="accordion-chevron" id="crit-panel-chevron">&#9660;</span>
+            </div>
+            <div class="accordion-body" id="crit-panel-body">
+            <div class="criteria-grid" style="margin-top:12px">
                 <div class="criteria-card" id="crit-eyes">
                     <div class="criteria-icon">&#128065;&#65039;</div>
                     <div class="criteria-info">
@@ -5803,6 +5807,7 @@ return a / b;`,Tne=`
                         <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-combo"></div></div>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
 
@@ -6091,6 +6096,12 @@ function showStatus(msg, type='info') {
 // ============================================================
 //  ACCORDION
 // ============================================================
+function toggleCriteriaPanel() {
+    const body = $('crit-panel-body'), chev = $('crit-panel-chevron');
+    body.classList.toggle('open');
+    chev.innerHTML = body.classList.contains('open') ? '&#9650;' : '&#9660;';
+}
+
 function toggleAccordion() {
     const body = $('acc-body'), chev = $('acc-chevron');
     body.classList.toggle('open');
