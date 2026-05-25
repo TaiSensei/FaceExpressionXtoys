@@ -108,7 +108,16 @@
             display: block;
             transform: scaleX(-1);
         }
-        #face-canvas { display: none; }
+        /* Face tracking overlay — sits on top of the video, NOT mirrored
+           (we mirror box X coords in JS instead so the emoji/text reads correctly). */
+        #face-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 3;
+        }
         /* Palm pause: highlight camera border only */
         .video-wrap.palm-pause { box-shadow: 0 0 0 4px #f97316, 0 0 24px 4px rgba(249,115,22,0.35); }
         .video-wrap.palm-pause::after {
@@ -276,6 +285,22 @@
         .criteria-name { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .criteria-pts { font-size: 1rem; font-weight: 700; color: var(--text); }
         .criteria-pts span { font-size: 0.65rem; color: var(--muted); font-weight: 400; }
+        /* Per-emotion target row inside the Emotion Match card */
+        .emo-row { display: flex; gap: 3px; margin-top: 5px; font-size: 0.95rem; line-height: 1; }
+        .emo-row span { opacity: 0.22; transition: opacity 0.15s, transform 0.15s, filter 0.15s; }
+        .emo-row span.target { opacity: 0.65; }
+        .emo-row span.active { opacity: 1; transform: scale(1.35); filter: drop-shadow(0 0 4px #16a34a); }
+
+        /* CRITERIA VERTICAL BARS (score panel) */
+        .crit-vbars { display: flex; gap: 5px; flex: 1; align-self: stretch; }
+        .cvbar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; }
+        .cvbar-track { flex: 1; width: 100%; background: var(--surface2); border-radius: 4px; overflow: hidden; display: flex; align-items: flex-end; }
+        .cvbar-fill { width: 100%; height: 0%; border-radius: 3px; background: var(--cvbar-c, var(--border)); transition: height 0.12s linear; opacity: 0.2; }
+        .cvbar-col.enabled .cvbar-fill { opacity: 0.4; }
+        .cvbar-col.active .cvbar-fill { opacity: 1; filter: drop-shadow(0 0 4px var(--cvbar-c)); }
+        .cvbar-lbl { font-size: 0.68rem; line-height: 1; opacity: 0.3; transition: opacity 0.2s; }
+        .cvbar-col.enabled .cvbar-lbl { opacity: 0.55; }
+        .cvbar-col.active .cvbar-lbl { opacity: 1; }
 
         /* BUTTONS */
         .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
@@ -291,13 +316,18 @@
         }
         .btn:disabled { opacity: 0.35; cursor: not-allowed; }
         .btn-primary { background: linear-gradient(135deg, var(--accent), #9333ea); color: #fff; }
-        .btn-primary:not(:disabled):hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-primary:not(:disabled):hover { filter: brightness(1.12); transform: translateY(-1px); }
+        .btn-primary:not(:disabled):active { filter: brightness(0.9) !important; transform: translateY(1px) !important; transition: none; }
         .btn-danger { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
         .btn-danger:not(:disabled):hover { background: rgba(239,68,68,0.25); }
+        .btn-danger:not(:disabled):active { background: rgba(239,68,68,0.35) !important; transform: translateY(1px); transition: none; }
         .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
         .btn-secondary:not(:disabled):hover { background: var(--border); }
+        .btn-secondary:not(:disabled):active { filter: brightness(0.88) !important; transform: translateY(1px); transition: none; }
         .btn-cyan { background: rgba(6,182,212,0.15); color: var(--accent2); border: 1px solid rgba(6,182,212,0.3); }
         .btn-cyan:not(:disabled):hover { background: rgba(6,182,212,0.25); }
+        .btn-cyan:not(:disabled):active { background: rgba(6,182,212,0.35) !important; transform: translateY(1px); transition: none; }
+        .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
         /* STATUS */
         .status-pill {
@@ -341,6 +371,7 @@
         .accordion-chevron { transition: transform 0.2s; color: var(--muted); font-size: 0.8rem; }
         .accordion-body { overflow: hidden; max-height: 0; transition: max-height 0.35s ease; }
         .accordion-body.open { max-height: 700px; }
+        #htp-body.open { max-height: 1500px; }
         .form-row { margin-bottom: 12px; }
         .form-row label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 4px; }
         .form-row input, .form-row select {
@@ -352,8 +383,9 @@
             color: var(--text);
             font-size: 0.85rem;
         }
-        .form-row input:focus, .form-row select:focus { outline: none; border-color: var(--accent); }
+        .form-row input:focus, .form-row select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(139,92,246,0.18); }
         .form-row input[type="checkbox"] { width: auto; margin-right: 6px; }
+        .panel label { cursor: pointer; user-select: none; }
 
         /* GAME OVER MODAL */
         .modal-overlay {
@@ -470,7 +502,7 @@
             margin-bottom: 14px;
             transition: border-color 0.2s;
         }
-        .name-input:focus { outline: none; border-color: var(--accent); }
+        .name-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(139,92,246,0.22); }
 
         .hidden { display: none !important; }
     </style>
@@ -5420,10 +5452,40 @@ return a / b;`,Tne=`
             </div>
         </div>
 
-        <!-- How to Play -->
+        <!-- Game Controls -->
+        <div class="panel">
+            <div class="panel-title">Game Controls</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+                <button class="btn btn-primary" style="flex:none" id="start-game-btn" disabled title="Starts camera automatically if needed, then asks for your name">&#9654; Start Game</button>
+                <div id="start-game-hint" style="font-size:0.72rem;color:var(--muted);margin-top:-4px">Camera will start automatically when you click Start Game</div>
+                <div style="display:flex;gap:8px">
+                    <button class="btn btn-danger" id="stop-game-btn" disabled>&#9632; Stop</button>
+                    <button class="btn btn-secondary" id="reset-game-btn" disabled>&#8635; Reset</button>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <button class="btn btn-secondary" id="lock-expr-btn" style="flex:none">&#127917; Lock Expression</button>
+                    <span id="lock-status" style="font-size:0.78rem;color:var(--muted)">Not set &mdash; face camera &amp; press</span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                    <button class="btn btn-secondary" id="baseline-btn" style="flex:none">&#129504; Capture Neutral Baseline</button>
+                    <span id="baseline-status" style="font-size:0.78rem;color:var(--muted)">No baseline &mdash; thresholds use defaults</span>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;font-size:0.78rem;color:var(--muted)">
+                    <span>Live intensity:</span>
+                    <strong id="intensity-display" style="color:var(--text)">0%</strong>
+                    <span id="smile-break-indicator" style="margin-left:auto;color:var(--accent);display:none">⚠️ smile broken &mdash; decaying</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- How to Play (collapsible, collapsed by default) -->
         <div class="panel" style="font-size:0.82rem;line-height:1.6;color:var(--muted)">
-            <div class="panel-title">How to Play</div>
-            <p style="margin-bottom:12px">Hit <strong style="color:var(--text)">Start</strong> and hold your best face for the whole round — your camera does all the work. No buttons, no controllers. Just your face.</p>
+            <div class="accordion-header" onclick="toggleHowToPlay()">
+                <div class="panel-title" style="margin:0">How to Play</div>
+                <span class="accordion-chevron" id="htp-chevron">&#9660;</span>
+            </div>
+            <div class="accordion-body" id="htp-body">
+            <p style="margin-bottom:12px;margin-top:12px">Hit <strong style="color:var(--text)">Start</strong> and hold your best face for the whole round — your camera does all the work. No buttons, no controllers. Just your face.</p>
 
             <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
                 <div style="display:flex;align-items:flex-start;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
@@ -5478,6 +5540,7 @@ return a / b;`,Tne=`
                     <p style="margin-top:10px;color:var(--muted)"><strong style="color:var(--text)">Score formula:</strong> each criterion accumulates <em>active seconds</em> independently. Final score = sum of active seconds across all five criteria. Maximum possible = duration (s) &times; 5 (e.g. 180&nbsp;&times;&nbsp;5 = 900 pts for a 3-minute round). Combo seconds are counted on top of individual criteria.</p>
                 </div>
             </details>
+            </div>
         </div>
 
         <!-- Scoring Criteria panel moved to the right column, under Score -->
@@ -5580,6 +5643,18 @@ return a / b;`,Tne=`
                         <label><input type="checkbox" id="enable-brows"  checked> &#129320; Brows Raised</label>
                         <label><input type="checkbox" id="enable-gaze"   checked> &#127917; Expression Lock</label>
                         <label><input type="checkbox" id="enable-stable" checked> &#128208; Head Still</label>
+                        <label><input type="checkbox" id="enable-emomatch" checked> &#127917; Emotion Match</label>
+                    </div>
+
+                    <div class="panel-title" style="margin-top:14px;font-size:0.72rem">Emotion targets (&#127917; Emotion Match scores while any selected emotion is dominant)</div>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px 10px;font-size:0.85rem">
+                        <label><input type="checkbox" id="emo-neutral">   &#128528; neutral</label>
+                        <label><input type="checkbox" id="emo-happy" checked> &#128522; happy</label>
+                        <label><input type="checkbox" id="emo-sad">       &#128546; sad</label>
+                        <label><input type="checkbox" id="emo-angry">     &#128544; angry</label>
+                        <label><input type="checkbox" id="emo-fearful">   &#128552; fearful</label>
+                        <label><input type="checkbox" id="emo-disgusted"> &#129314; disgusted</label>
+                        <label><input type="checkbox" id="emo-surprised" checked> &#128558; surprised</label>
                     </div>
 
                     <div class="form-row" style="margin-top:10px">
@@ -5638,6 +5713,36 @@ return a / b;`,Tne=`
                         <div class="score-label">pts &nbsp;<span class="palm-indicator" id="palm-indicator">&#129311; paused</span></div>
                         <div class="level-badge" id="level-badge">&mdash;</div>
                     </div>
+                    <div class="crit-vbars">
+                        <div class="cvbar-col" id="cvbar-col-eyes" style="--cvbar-c:#06b6d4">
+                            <div class="cvbar-track"><div class="cvbar-fill" id="cvbar-eyes"></div></div>
+                            <span class="cvbar-lbl">&#128065;&#65039;</span>
+                        </div>
+                        <div class="cvbar-col" id="cvbar-col-smile" style="--cvbar-c:#16a34a">
+                            <div class="cvbar-track"><div class="cvbar-fill" id="cvbar-smile"></div></div>
+                            <span class="cvbar-lbl">&#128522;</span>
+                        </div>
+                        <div class="cvbar-col" id="cvbar-col-brows" style="--cvbar-c:#4f86f0">
+                            <div class="cvbar-track"><div class="cvbar-fill" id="cvbar-brows"></div></div>
+                            <span class="cvbar-lbl">&#129320;</span>
+                        </div>
+                        <div class="cvbar-col" id="cvbar-col-gaze" style="--cvbar-c:#7c3aed">
+                            <div class="cvbar-track"><div class="cvbar-fill" id="cvbar-gaze"></div></div>
+                            <span class="cvbar-lbl">&#127919;</span>
+                        </div>
+                        <div class="cvbar-col" id="cvbar-col-stable" style="--cvbar-c:#0891b2">
+                            <div class="cvbar-track"><div class="cvbar-fill" id="cvbar-stable"></div></div>
+                            <span class="cvbar-lbl">&#128208;</span>
+                        </div>
+                        <div class="cvbar-col" id="cvbar-col-emomatch" style="--cvbar-c:#f59e0b">
+                            <div class="cvbar-track"><div class="cvbar-fill" id="cvbar-emomatch"></div></div>
+                            <span class="cvbar-lbl">&#127917;</span>
+                        </div>
+                        <div class="cvbar-col" id="cvbar-col-combo" style="--cvbar-c:#eab308">
+                            <div class="cvbar-track"><div class="cvbar-fill" id="cvbar-combo"></div></div>
+                            <span class="cvbar-lbl">&#9889;</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="timer-bar-wrap">
@@ -5661,10 +5766,24 @@ return a / b;`,Tne=`
             </div>
         </div>
 
-        <!-- Scoring Criteria (live) — directly under the Score so live progress bars are visible in real time -->
+        <!-- Leaderboard -->
         <div class="panel">
-            <div class="panel-title">Scoring Criteria (live)</div>
-            <div class="criteria-grid">
+            <div class="panel-title">&#127942; Leaderboard</div>
+            <div id="lb-body"><p class="lb-empty">No scores yet &mdash; play a full game!</p></div>
+            <div class="lb-btn-row">
+                <button class="btn btn-cyan" onclick="exportLeaderboard()">&#11015; Export JSON</button>
+                <button class="btn btn-secondary" onclick="clearLeaderboard()">&#128465; Clear</button>
+            </div>
+        </div>
+
+        <!-- Scoring Criteria (live) — collapsible panel, collapsed by default -->
+        <div class="panel">
+            <div class="accordion-header" onclick="toggleCriteriaPanel()">
+                <div class="panel-title" style="margin:0">Scoring Criteria (live)</div>
+                <span class="accordion-chevron" id="crit-panel-chevron">&#9660;</span>
+            </div>
+            <div class="accordion-body" id="crit-panel-body">
+            <div class="criteria-grid" style="margin-top:12px">
                 <div class="criteria-card" id="crit-eyes">
                     <div class="criteria-icon">&#128065;&#65039;</div>
                     <div class="criteria-info">
@@ -5705,6 +5824,23 @@ return a / b;`,Tne=`
                         <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-stable"></div></div>
                     </div>
                 </div>
+                <div class="criteria-card" id="crit-emomatch">
+                    <div class="criteria-icon">&#127917;</div>
+                    <div class="criteria-info">
+                        <div class="criteria-name">Emotion Match</div>
+                        <div class="criteria-pts" id="pts-emomatch">0 <span>pts</span></div>
+                        <div class="crit-bar-wrap"><div class="crit-bar-fill" id="bar-emomatch"></div></div>
+                        <div class="emo-row" id="emo-row">
+                            <span data-emo="neutral">&#128528;</span>
+                            <span data-emo="happy">&#128522;</span>
+                            <span data-emo="sad">&#128546;</span>
+                            <span data-emo="angry">&#128544;</span>
+                            <span data-emo="fearful">&#128552;</span>
+                            <span data-emo="disgusted">&#129314;</span>
+                            <span data-emo="surprised">&#128558;</span>
+                        </div>
+                    </div>
+                </div>
                 <div class="criteria-card" id="crit-combo">
                     <div class="criteria-icon">&#9889;</div>
                     <div class="criteria-info">
@@ -5714,53 +5850,6 @@ return a / b;`,Tne=`
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Game Controls -->
-        <div class="panel">
-            <div class="panel-title">Game Controls</div>
-            <div style="display:flex;flex-direction:column;gap:8px">
-                <button class="btn btn-primary" style="flex:none" id="start-game-btn" disabled>&#9654; Start Game</button>
-                <div style="display:flex;gap:8px">
-                    <button class="btn btn-danger" id="stop-game-btn" disabled>&#9632; Stop</button>
-                    <button class="btn btn-secondary" id="reset-game-btn" disabled>&#8635; Reset</button>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center">
-                    <button class="btn btn-secondary" id="lock-expr-btn" style="flex:none">&#127917; Lock Expression</button>
-                    <span id="lock-status" style="font-size:0.78rem;color:var(--muted)">Not set &mdash; face camera &amp; press</span>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center">
-                    <button class="btn btn-secondary" id="baseline-btn" style="flex:none">&#129504; Capture Neutral Baseline</button>
-                    <span id="baseline-status" style="font-size:0.78rem;color:var(--muted)">No baseline &mdash; thresholds use defaults</span>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center;font-size:0.78rem;color:var(--muted)">
-                    <span>Live intensity:</span>
-                    <strong id="intensity-display" style="color:var(--text)">0%</strong>
-                    <span id="smile-break-indicator" style="margin-left:auto;color:var(--accent);display:none">⚠️ smile broken &mdash; decaying</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Score Breakdown -->
-        <div class="panel">
-            <div class="panel-title">Time Breakdown</div>
-            <table class="breakdown-table">
-                <tr><td>&#128065;&#65039; Eyes Open</td><td id="bd-eyes">0s</td></tr>
-                <tr><td>&#128522; Smile</td><td id="bd-smile">0s</td></tr>
-                <tr><td>&#129320; Brows Raised</td><td id="bd-brows">0s</td></tr>
-                <tr><td>&#127917; Expr Lock</td><td id="bd-gaze">0s</td></tr>
-                <tr><td>&#128208; Head Still</td><td id="bd-stable">0s</td></tr>
-                <tr><td>&#9889; Combo</td><td id="bd-combo">0s</td></tr>
-            </table>
-        </div>
-
-        <!-- Leaderboard -->
-        <div class="panel">
-            <div class="panel-title">&#127942; Leaderboard</div>
-            <div id="lb-body"><p class="lb-empty">No scores yet &mdash; play a full game!</p></div>
-            <div class="lb-btn-row">
-                <button class="btn btn-cyan" onclick="exportLeaderboard()">&#11015; Export JSON</button>
-                <button class="btn btn-secondary" onclick="clearLeaderboard()">&#128465; Clear</button>
             </div>
         </div>
 
@@ -5773,7 +5862,7 @@ return a / b;`,Tne=`
 // ============================================================
 let   GAME_DURATION_SEC = 180;   // 3-minute default (overridden by Settings > Round Duration)
 const DETECTION_MS      = 100;   // face detection tick
-const SCORE_TICK_MS     = 500;   // scoring interval
+const SCORE_TICK_MS     = 100;   // scoring interval (100ms = 0.1s steps, smooth display)
 let   MAX_SCORE_SEC     = GAME_DURATION_SEC * 5; // recomputed on round start
 
 // Round intensity ramp & smile-break decay defaults (overridden by Settings inputs)
@@ -5829,10 +5918,10 @@ const state = {
     gameStartTime: 0,
     gameElapsed: 0,
     score: 0,
-    bd: { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 },
-    criteria:     { eyes:false, smile:false, brows:false, gaze:false, stable:false },
-    critTime:     { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 },
-    prevCriteria: { eyes:false, smile:false, brows:false, gaze:false, stable:false },
+    bd: { eyes:0, smile:0, brows:0, gaze:0, stable:0, emomatch:0, combo:0 },
+    criteria:     { eyes:false, smile:false, brows:false, gaze:false, stable:false, emomatch:false },
+    critTime:     { eyes:0, smile:0, brows:0, gaze:0, stable:0, emomatch:0, combo:0 },
+    prevCriteria: { eyes:false, smile:false, brows:false, gaze:false, stable:false, emomatch:false },
     // expression smoothing
     exprHistory: [],
     stableExpr: 'neutral',
@@ -5851,7 +5940,9 @@ const state = {
     // expression lock
     exprLock: null,
     // per-criterion enable flags (live-mirrored from settings checkboxes)
-    enabled: { eyes:true, smile:true, brows:true, gaze:true, stable:true },
+    enabled: { eyes:true, smile:true, brows:true, gaze:true, stable:true, emomatch:true },
+    // emotion-target set for the Emotion Match criterion (live-mirrored from settings)
+    emotionTargets: { neutral:false, happy:true, sad:false, angry:false, fearful:false, disgusted:false, surprised:true },
     // neutral-face baseline (captured via Capture Neutral Baseline)
     baseline: null,
     // round intensity tracking
@@ -5895,6 +5986,16 @@ const el = {
     enBrows:  $('enable-brows'),
     enGaze:   $('enable-gaze'),
     enStable: $('enable-stable'),
+    enEmomatch: $('enable-emomatch'),
+    // emotion-target checkboxes (Emotion Match criterion)
+    emoNeutral:   $('emo-neutral'),
+    emoHappy:     $('emo-happy'),
+    emoSad:       $('emo-sad'),
+    emoAngry:     $('emo-angry'),
+    emoFearful:   $('emo-fearful'),
+    emoDisgusted: $('emo-disgusted'),
+    emoSurprised: $('emo-surprised'),
+    emoRow:       $('emo-row'),
     // baseline + intensity HUD
     baselineBtn:    $('baseline-btn'),
     baselineStatus: $('baseline-status'),
@@ -5942,15 +6043,21 @@ const el = {
     critBrows: $('crit-brows'), ptsBrows: $('pts-brows'),
     critGaze:  $('crit-gaze'),  ptsGaze:  $('pts-gaze'),
     critStable:$('crit-stable'),ptsStable:$('pts-stable'),
+    critEmomatch: $('crit-emomatch'), ptsEmomatch: $('pts-emomatch'),
     critCombo: $('crit-combo'), ptsCombo: $('pts-combo'),
     // time bars
     barEyes:  $('bar-eyes'),  barSmile: $('bar-smile'),
     barBrows: $('bar-brows'), barGaze:  $('bar-gaze'),
-    barStable:$('bar-stable'),barCombo: $('bar-combo'),
-    // breakdown
-    bdEyes:  $('bd-eyes'),  bdSmile: $('bd-smile'),
-    bdBrows: $('bd-brows'), bdGaze:  $('bd-gaze'),
-    bdStable:$('bd-stable'),bdCombo: $('bd-combo'),
+    barStable:$('bar-stable'),barEmomatch:$('bar-emomatch'),
+    barCombo: $('bar-combo'),
+    // criteria vertical bars (score panel)
+    cvbarEyes:     $('cvbar-eyes'),     cvbarColEyes:     $('cvbar-col-eyes'),
+    cvbarSmile:    $('cvbar-smile'),    cvbarColSmile:    $('cvbar-col-smile'),
+    cvbarBrows:    $('cvbar-brows'),    cvbarColBrows:    $('cvbar-col-brows'),
+    cvbarGaze:     $('cvbar-gaze'),     cvbarColGaze:     $('cvbar-col-gaze'),
+    cvbarStable:   $('cvbar-stable'),   cvbarColStable:   $('cvbar-col-stable'),
+    cvbarEmomatch: $('cvbar-emomatch'), cvbarColEmomatch: $('cvbar-col-emomatch'),
+    cvbarCombo:    $('cvbar-combo'),    cvbarColCombo:    $('cvbar-col-combo'),
     // leaderboard
     lbBody:           $('lb-body'),
     // name modal
@@ -5976,6 +6083,17 @@ function showStatus(msg, type='info') {
 // ============================================================
 //  ACCORDION
 // ============================================================
+function toggleHowToPlay() {
+    const body = $('htp-body'), chev = $('htp-chevron');
+    body.classList.toggle('open');
+    chev.innerHTML = body.classList.contains('open') ? '&#9650;' : '&#9660;';
+}
+function toggleCriteriaPanel() {
+    const body = $('crit-panel-body'), chev = $('crit-panel-chevron');
+    body.classList.toggle('open');
+    chev.innerHTML = body.classList.contains('open') ? '&#9650;' : '&#9660;';
+}
+
 function toggleAccordion() {
     const body = $('acc-body'), chev = $('acc-chevron');
     body.classList.toggle('open');
@@ -6467,12 +6585,103 @@ async function detectFace() {
 
             // Apply per-criterion enable flags (Settings checkboxes)
             const en = state.enabled;
+
+            // ── Animated face tracking box + dominant-emotion emoji ──
+            // Mirror X because the <video> element is CSS-flipped (scaleX(-1))
+            // but the canvas overlay is not flipped (so emoji/text render correctly).
+            try {
+                const box = face.detection.box;
+                const cw  = el.canvas.width;
+                const mx  = cw - box.x - box.width; // mirrored x
+                const my  = box.y;
+                const bw  = box.width, bh = box.height;
+                const critCount = [eyesOpen, isSmiling, browsOk, gazeOk, headStable].filter(Boolean).length;
+                const boxColor = critCount >= 4 ? '#10b981'
+                              : critCount >= 2 ? '#f59e0b'
+                              : critCount >= 1 ? '#3b82f6'
+                              : '#94a3b8';
+                const pulse = 1 + Math.sin(now / 180) * 0.18;
+                ctx.save();
+                ctx.strokeStyle = boxColor;
+                ctx.lineWidth   = 3 * pulse;
+                ctx.shadowColor = boxColor;
+                ctx.shadowBlur  = 14 * pulse;
+                // Rounded rect
+                const r = Math.min(14, bw * 0.12, bh * 0.12);
+                ctx.beginPath();
+                ctx.moveTo(mx + r, my);
+                ctx.lineTo(mx + bw - r, my);
+                ctx.quadraticCurveTo(mx + bw, my, mx + bw, my + r);
+                ctx.lineTo(mx + bw, my + bh - r);
+                ctx.quadraticCurveTo(mx + bw, my + bh, mx + bw - r, my + bh);
+                ctx.lineTo(mx + r, my + bh);
+                ctx.quadraticCurveTo(mx, my + bh, mx, my + bh - r);
+                ctx.lineTo(mx, my + r);
+                ctx.quadraticCurveTo(mx, my, mx + r, my);
+                ctx.closePath();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                // Corner ticks (bigger lines at each corner for that “scanner” look)
+                const cornerLen = Math.min(22, bw * 0.18);
+                ctx.lineWidth = 4 * pulse;
+                ctx.beginPath();
+                // TL
+                ctx.moveTo(mx, my + cornerLen); ctx.lineTo(mx, my); ctx.lineTo(mx + cornerLen, my);
+                // TR
+                ctx.moveTo(mx + bw - cornerLen, my); ctx.lineTo(mx + bw, my); ctx.lineTo(mx + bw, my + cornerLen);
+                // BR
+                ctx.moveTo(mx + bw, my + bh - cornerLen); ctx.lineTo(mx + bw, my + bh); ctx.lineTo(mx + bw - cornerLen, my + bh);
+                // BL
+                ctx.moveTo(mx + cornerLen, my + bh); ctx.lineTo(mx, my + bh); ctx.lineTo(mx, my + bh - cornerLen);
+                ctx.stroke();
+
+                // Emoji + label above the box
+                const emoji = EMOJI_MAP[state.stableExpr] || '😐';
+                const label = state.stableExpr + ' ' + Math.round(maxP * 100) + '%';
+                const emojiSize = Math.max(28, Math.min(64, bw * 0.32));
+                const cx = mx + bw / 2;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'alphabetic';
+                // Label pill
+                ctx.font = '600 13px system-ui, -apple-system, sans-serif';
+                const labelW = ctx.measureText(label).width + 16;
+                const labelY = Math.max(emojiSize + 30, my - 6);
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+                const lx = cx - labelW / 2, ly = labelY - 18;
+                if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(lx, ly, labelW, 22, 11); ctx.fill(); }
+                else { ctx.fillRect(lx, ly, labelW, 22); }
+                ctx.fillStyle = boxColor;
+                ctx.fillText(label, cx, ly + 16);
+                // Emoji above the pill
+                ctx.font = emojiSize + 'px serif';
+                ctx.fillText(emoji, cx, ly - 6);
+
+                // Active-criteria icon row just under the box
+                const tickIcons = [];
+                if (en.eyes   && eyesOpen)   tickIcons.push('👁️');
+                if (en.smile  && isSmiling)  tickIcons.push('😊');
+                if (en.brows  && browsOk)    tickIcons.push('🤨');
+                if (en.gaze   && gazeOk)     tickIcons.push('🎭');
+                if (en.stable && headStable) tickIcons.push('🧠');
+                if (tickIcons.length) {
+                    ctx.font = '20px serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'top';
+                    const ty = my + bh + 6;
+                    tickIcons.forEach((t, i) => ctx.fillText(t, mx + 4 + i * 24, ty));
+                }
+                ctx.restore();
+            } catch (_) { /* overlay is decorative; never break the loop */ }
+            // Emotion Match: stable dominant expression must be in the user-selected target set
+            const emomatchOk = en.emomatch && !!state.emotionTargets[state.stableExpr];
             state.criteria = {
-                eyes:   en.eyes   && eyesOpen,
-                smile:  en.smile  && isSmiling,
-                brows:  en.brows  && browsOk,
-                gaze:   en.gaze   && gazeOk,
-                stable: en.stable && headStable
+                eyes:     en.eyes   && eyesOpen,
+                smile:    en.smile  && isSmiling,
+                brows:    en.brows  && browsOk,
+                gaze:     en.gaze   && gazeOk,
+                stable:   en.stable && headStable,
+                emomatch: emomatchOk
             };
 
             // ── Live UI ─────────────────────────────────────────
@@ -6521,7 +6730,7 @@ async function detectFace() {
 
         } else {
             // No face detected
-            state.criteria   = { eyes:false, smile:false, brows:false, gaze:false, stable:false };
+            state.criteria   = { eyes:false, smile:false, brows:false, gaze:false, stable:false, emomatch:false };
             state.lastNose   = null;
             state.headStillSince = 0;
             el.emotionText.textContent  = 'No face';
@@ -6566,37 +6775,52 @@ function refreshCritCards() {
     const maxSec  = GAME_DURATION_SEC;
 
     // Detect activations and fire flashes
-    if (c.eyes   && !prev.eyes)   flashHud(el.hudEyes,   '#7c3aed', false);
-    if (c.smile  && !prev.smile)  flashHud(el.hudSmile,  '#16a34a', false);
-    if (c.brows  && !prev.brows)  flashHud(el.hudBrows,  '#0891b2', false);
-    if (c.gaze   && !prev.gaze)   flashHud(el.hudGaze,   '#7c3aed', false);
-    if (c.stable && !prev.stable) flashHud(el.hudStable, '#0891b2', false);
-    if (combo    && !prevCombo)   flashHud(el.hudStable, '#eab308', true);
+    if (c.eyes     && !prev.eyes)     flashHud(el.hudEyes,   '#7c3aed', false);
+    if (c.smile    && !prev.smile)    flashHud(el.hudSmile,  '#16a34a', false);
+    if (c.brows    && !prev.brows)    flashHud(el.hudBrows,  '#0891b2', false);
+    if (c.gaze     && !prev.gaze)     flashHud(el.hudGaze,   '#7c3aed', false);
+    if (c.stable   && !prev.stable)   flashHud(el.hudStable, '#0891b2', false);
+    if (c.emomatch && !prev.emomatch) flashHud(el.hudGaze,   '#f59e0b', false);
+    if (combo      && !prevCombo)     flashHud(el.hudStable, '#eab308', true);
 
-    state.prevCriteria = { eyes: c.eyes, smile: c.smile, brows: c.brows, gaze: c.gaze, stable: c.stable };
+    state.prevCriteria = { eyes: c.eyes, smile: c.smile, brows: c.brows, gaze: c.gaze, stable: c.stable, emomatch: c.emomatch };
 
-    setCard(el.critEyes,  c.eyes);
-    setCard(el.critSmile, c.smile);
-    setCard(el.critBrows, c.brows);
-    setCard(el.critGaze,  c.gaze);
-    setCard(el.critStable,c.stable);
-    setCard(el.critCombo, combo);
+    setCard(el.critEyes,     c.eyes);
+    setCard(el.critSmile,    c.smile);
+    setCard(el.critBrows,    c.brows);
+    setCard(el.critGaze,     c.gaze);
+    setCard(el.critStable,   c.stable);
+    setCard(el.critEmomatch, c.emomatch);
+    setCard(el.critCombo,    combo);
 
-    el.ptsEyes.innerHTML   = fmtSec(state.bd.eyes);
-    el.ptsSmile.innerHTML  = fmtSec(state.bd.smile);
-    el.ptsBrows.innerHTML  = fmtSec(state.bd.brows);
-    el.ptsGaze.innerHTML   = fmtSec(state.bd.gaze);
-    el.ptsStable.innerHTML = fmtSec(state.bd.stable);
-    el.ptsCombo.innerHTML  = fmtSec(state.bd.combo);
+    el.ptsEyes.innerHTML     = fmtSec(state.bd.eyes);
+    el.ptsSmile.innerHTML    = fmtSec(state.bd.smile);
+    el.ptsBrows.innerHTML    = fmtSec(state.bd.brows);
+    el.ptsGaze.innerHTML     = fmtSec(state.bd.gaze);
+    el.ptsStable.innerHTML   = fmtSec(state.bd.stable);
+    el.ptsEmomatch.innerHTML = fmtSec(state.bd.emomatch);
+    el.ptsCombo.innerHTML    = fmtSec(state.bd.combo);
 
     // Elapsed time bars
     const t = state.critTime;
-    el.barEyes.style.width   = Math.min(100, (t.eyes   / maxSec) * 100) + '%';
-    el.barSmile.style.width  = Math.min(100, (t.smile  / maxSec) * 100) + '%';
-    el.barBrows.style.width  = Math.min(100, (t.brows  / maxSec) * 100) + '%';
-    el.barGaze.style.width   = Math.min(100, (t.gaze   / maxSec) * 100) + '%';
-    el.barStable.style.width = Math.min(100, (t.stable / maxSec) * 100) + '%';
-    el.barCombo.style.width  = Math.min(100, (t.combo  / maxSec) * 100) + '%';
+    el.barEyes.style.width     = Math.min(100, (t.eyes     / maxSec) * 100) + '%';
+    el.barSmile.style.width    = Math.min(100, (t.smile    / maxSec) * 100) + '%';
+    el.barBrows.style.width    = Math.min(100, (t.brows    / maxSec) * 100) + '%';
+    el.barGaze.style.width     = Math.min(100, (t.gaze     / maxSec) * 100) + '%';
+    el.barStable.style.width   = Math.min(100, (t.stable   / maxSec) * 100) + '%';
+    el.barEmomatch.style.width = Math.min(100, (t.emomatch / maxSec) * 100) + '%';
+    el.barCombo.style.width    = Math.min(100, (t.combo    / maxSec) * 100) + '%';
+
+    // Emotion target row: dim non-targets, brighten targets, scale the dominant one
+    if (el.emoRow) {
+        const cur = state.stableExpr;
+        el.emoRow.querySelectorAll('span[data-emo]').forEach(sp => {
+            const e = sp.dataset.emo;
+            const isTarget = !!state.emotionTargets[e];
+            sp.classList.toggle('target', isTarget);
+            sp.classList.toggle('active', isTarget && e === cur && state.enabled.emomatch);
+        });
+    }
 }
 function setCard(card, active) { card.classList.toggle('active', !!active); }
 
@@ -6612,11 +6836,12 @@ function startGame() {
     SMILE_BREAK_DECAY_PER_SEC = Math.max(0, parseFloat(el.smileBreakDecay.value) || 0);
     MAX_SCORE_SEC           = GAME_DURATION_SEC * 5;
     state.enabled = {
-        eyes:   el.enEyes.checked,
-        smile:  el.enSmile.checked,
-        brows:  el.enBrows.checked,
-        gaze:   el.enGaze.checked,
-        stable: el.enStable.checked
+        eyes:     el.enEyes.checked,
+        smile:    el.enSmile.checked,
+        brows:    el.enBrows.checked,
+        gaze:     el.enGaze.checked,
+        stable:   el.enStable.checked,
+        emomatch: el.enEmomatch.checked
     };
 
     state.gameActive    = true;
@@ -6624,9 +6849,9 @@ function startGame() {
     state.gameStartTime = Date.now();
     state.gameElapsed   = 0;
     state.score         = 0;
-    state.bd            = { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 };
-    state.critTime      = { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 };
-    state.prevCriteria  = { eyes:false, smile:false, brows:false, gaze:false, stable:false };
+    state.bd            = { eyes:0, smile:0, brows:0, gaze:0, stable:0, emomatch:0, combo:0 };
+    state.critTime      = { eyes:0, smile:0, brows:0, gaze:0, stable:0, emomatch:0, combo:0 };
+    state.prevCriteria  = { eyes:false, smile:false, brows:false, gaze:false, stable:false, emomatch:false };
     state.currentIntensity = ROUND_START_INTENSITY;
     state.targetIntensity  = ROUND_START_INTENSITY;
     state.smileBrokenSince = 0;
@@ -6658,11 +6883,12 @@ function scoreTick() {
 
     const c = state.criteria;
     const tick = SCORE_TICK_MS / 1000;
-    if (c.eyes)   { state.bd.eyes   += tick; state.score += tick; state.critTime.eyes   += tick; }
-    if (c.smile)  { state.bd.smile  += tick; state.score += tick; state.critTime.smile  += tick; }
-    if (c.brows)  { state.bd.brows  += tick; state.score += tick; state.critTime.brows  += tick; }
-    if (c.gaze)   { state.bd.gaze   += tick; state.score += tick; state.critTime.gaze   += tick; }
-    if (c.stable) { state.bd.stable += tick; state.score += tick; state.critTime.stable += tick; }
+    if (c.eyes)     { state.bd.eyes     += tick; state.score += tick; state.critTime.eyes     += tick; }
+    if (c.smile)    { state.bd.smile    += tick; state.score += tick; state.critTime.smile    += tick; }
+    if (c.brows)    { state.bd.brows    += tick; state.score += tick; state.critTime.brows    += tick; }
+    if (c.gaze)     { state.bd.gaze     += tick; state.score += tick; state.critTime.gaze     += tick; }
+    if (c.stable)   { state.bd.stable   += tick; state.score += tick; state.critTime.stable   += tick; }
+    if (c.emomatch) { state.bd.emomatch += tick; state.score += tick; state.critTime.emomatch += tick; }
     if (c.eyes && c.smile && c.brows && c.gaze && c.stable) {
         state.bd.combo += tick;
         state.critTime.combo += tick;
@@ -6735,8 +6961,8 @@ function stopGame(timeUp) {
 function resetGame() {
     if (state.gameActive) stopGame(false);
     state.score       = 0;
-    state.bd          = { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 };
-    state.critTime    = { eyes:0, smile:0, brows:0, gaze:0, stable:0, combo:0 };
+    state.bd          = { eyes:0, smile:0, brows:0, gaze:0, stable:0, emomatch:0, combo:0 };
+    state.critTime    = { eyes:0, smile:0, brows:0, gaze:0, stable:0, emomatch:0, combo:0 };
     state.gameElapsed = 0;
     el.resetGameBtn.disabled = true;
     if (state.isRunning) el.startGameBtn.disabled = false;
@@ -6773,13 +6999,25 @@ function updateScoreUI() {
         seg.style.background = parseInt(seg.dataset.tseg) < litSegs ? tColor : '';
     });
 
-    // Breakdown table
-    el.bdEyes.textContent   = fmtSec(state.bd.eyes);
-    el.bdSmile.textContent  = fmtSec(state.bd.smile);
-    el.bdBrows.textContent  = fmtSec(state.bd.brows);
-    el.bdGaze.textContent   = fmtSec(state.bd.gaze);
-    el.bdStable.textContent = fmtSec(state.bd.stable);
-    el.bdCombo.textContent  = fmtSec(state.bd.combo);
+    // Criteria vertical bars
+    const dur = Math.max(1, GAME_DURATION_SEC);
+    const ct  = state.critTime;
+    const cv  = state.criteria;
+    const en  = state.enabled;
+    el.cvbarEyes.style.height     = Math.min(100, (ct.eyes     / dur) * 100) + '%';
+    el.cvbarSmile.style.height    = Math.min(100, (ct.smile    / dur) * 100) + '%';
+    el.cvbarBrows.style.height    = Math.min(100, (ct.brows    / dur) * 100) + '%';
+    el.cvbarGaze.style.height     = Math.min(100, (ct.gaze     / dur) * 100) + '%';
+    el.cvbarStable.style.height   = Math.min(100, (ct.stable   / dur) * 100) + '%';
+    el.cvbarEmomatch.style.height = Math.min(100, (ct.emomatch / dur) * 100) + '%';
+    el.cvbarCombo.style.height    = Math.min(100, (ct.combo    / dur) * 100) + '%';
+    el.cvbarColEyes.classList.toggle('enabled',  !!en.eyes);     el.cvbarColEyes.classList.toggle('active',  !!cv.eyes);
+    el.cvbarColSmile.classList.toggle('enabled', !!en.smile);    el.cvbarColSmile.classList.toggle('active', !!cv.smile);
+    el.cvbarColBrows.classList.toggle('enabled', !!en.brows);    el.cvbarColBrows.classList.toggle('active', !!cv.brows);
+    el.cvbarColGaze.classList.toggle('enabled',  !!en.gaze);     el.cvbarColGaze.classList.toggle('active',  !!cv.gaze);
+    el.cvbarColStable.classList.toggle('enabled',!!en.stable);   el.cvbarColStable.classList.toggle('active', !!cv.stable);
+    el.cvbarColEmomatch.classList.toggle('enabled',!!en.emomatch);el.cvbarColEmomatch.classList.toggle('active',!!cv.emomatch);
+    el.cvbarColCombo.classList.toggle('enabled', true);          el.cvbarColCombo.classList.toggle('active',  !!(cv.eyes && cv.smile && cv.brows && cv.gaze && cv.stable));
 }
 
 // ============================================================
@@ -6790,13 +7028,14 @@ function showModal() {
     const nameTag = state.playerName ? ' \u2014 ' + state.playerName : '';
     document.querySelector('.modal-title').textContent = "Time's Up!" + nameTag;
     el.modalBreakdown.innerHTML =
-        '<div class="modal-breakdown-row"><span>👁️ Eyes Open</span><span>' + state.bd.eyes + ' pts</span></div>' +
-        '<div class="modal-breakdown-row"><span>😊 Smile</span><span>' + state.bd.smile + ' pts</span></div>' +
-        '<div class="modal-breakdown-row"><span>🙂 Brows Relaxed</span><span>' + state.bd.brows + ' pts</span></div>' +
-        '<div class="modal-breakdown-row"><span>🎯 Eye Gaze</span><span>' + state.bd.gaze + ' pts</span></div>' +
-        '<div class="modal-breakdown-row"><span>📐 Head Still</span><span>' + state.bd.stable + ' pts</span></div>' +
-        '<div class="modal-breakdown-row"><span>⚡ Combo Bonus</span><span>' + state.bd.combo + ' pts</span></div>' +
-        '<div class="modal-breakdown-row total"><span>Total</span><span>' + state.score + ' pts</span></div>';
+        '<div class="modal-breakdown-row"><span>👁️ Eyes Open</span><span>' + fmtSec(state.bd.eyes) + '</span></div>' +
+        '<div class="modal-breakdown-row"><span>😊 Smile</span><span>' + fmtSec(state.bd.smile) + '</span></div>' +
+        '<div class="modal-breakdown-row"><span>🙂 Brows Relaxed</span><span>' + fmtSec(state.bd.brows) + '</span></div>' +
+        '<div class="modal-breakdown-row"><span>🎯 Eye Gaze</span><span>' + fmtSec(state.bd.gaze) + '</span></div>' +
+        '<div class="modal-breakdown-row"><span>📐 Head Still</span><span>' + fmtSec(state.bd.stable) + '</span></div>' +
+        '<div class="modal-breakdown-row"><span>🎭 Emotion Match</span><span>' + fmtSec(state.bd.emomatch) + '</span></div>' +
+        '<div class="modal-breakdown-row"><span>⚡ Combo Bonus</span><span>' + fmtSec(state.bd.combo) + '</span></div>' +
+        '<div class="modal-breakdown-row total"><span>Total</span><span>' + fmtSec(state.score) + '</span></div>';
     el.modalOverlay.classList.add('active');
 }
 function closeModal() {
@@ -6961,11 +7200,17 @@ async function testWebhook() {
 //  PLAYER NAME MODAL
 // ============================================================
 async function showNameModal() {
-    if (!state.isLibLoaded) { showStatus('Library still loading…', 'err'); return; }
+    if (!state.isLibLoaded) { showStatus('Models still loading — please wait…', 'err'); return; }
     if (!state.isRunning) {
+        const hint = document.getElementById('start-game-hint');
+        if (hint) hint.textContent = 'Starting camera…';
         showStatus('Starting camera…', 'info');
         await startCamera();
-        if (!state.isRunning) return; // camera failed
+        if (!state.isRunning) {
+            if (hint) hint.textContent = 'Camera failed — check browser permissions';
+            return; // camera failed — startCamera already showed error status
+        }
+        if (hint) hint.textContent = 'Camera running ✓';
     }
     el.playerNameInput.value = state.playerName || '';
     el.nameModalOverlay.classList.add('active');
@@ -7066,16 +7311,25 @@ el.baselineBtn.addEventListener('click', captureBaseline);
 el.btConnectBtn.addEventListener('click', () => motorbunny.connect());
 el.btDisconnectBtn.addEventListener('click', () => motorbunny.disconnect());
 // Live-mirror checkbox state so toggling mid-round takes effect immediately
-['enEyes','enSmile','enBrows','enGaze','enStable'].forEach(k => {
+['enEyes','enSmile','enBrows','enGaze','enStable','enEmomatch'].forEach(k => {
     el[k].addEventListener('change', () => {
         state.enabled = {
-            eyes:   el.enEyes.checked,
-            smile:  el.enSmile.checked,
-            brows:  el.enBrows.checked,
-            gaze:   el.enGaze.checked,
-            stable: el.enStable.checked
+            eyes:     el.enEyes.checked,
+            smile:    el.enSmile.checked,
+            brows:    el.enBrows.checked,
+            gaze:     el.enGaze.checked,
+            stable:   el.enStable.checked,
+            emomatch: el.enEmomatch.checked
         };
     });
+});
+// Live-mirror per-emotion target checkboxes for the Emotion Match criterion
+[
+    ['emoNeutral','neutral'], ['emoHappy','happy'], ['emoSad','sad'],
+    ['emoAngry','angry'], ['emoFearful','fearful'],
+    ['emoDisgusted','disgusted'], ['emoSurprised','surprised']
+].forEach(([k, expr]) => {
+    el[k].addEventListener('change', () => { state.emotionTargets[expr] = el[k].checked; });
 });
 el.showRaw.addEventListener('change', function () {
     el.rawView.classList.toggle('hidden', !this.checked);
